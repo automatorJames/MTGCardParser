@@ -183,9 +183,12 @@ public static class ManaPayment
 
         // Snow symbols need snow sources, so the others are paid from non-snow sources where they can be.
         sources = sources.OrderBy(x => x.Snow).ThenBy(x => x.Delve).ToImmutableList();
+        if (remaining.Count + cost.Snow > sources.Count)
+            return null;
         var used = new bool[sources.Count];
         var plan = new List<(Source, Color?)>();
-        if (!Assign(remaining.OrderBy(x => x.Length).ToList(), 0, sources, used, plan))
+        var ordered = remaining.OrderBy(x => x.Length).ToList();
+        if (!Assign(ordered, 0, sources, used, plan, new int[ordered.Count]))
             return null;
         for (var snow = 0; snow < cost.Snow; snow++)
         {
@@ -198,13 +201,19 @@ public static class ManaPayment
         return plan.ToImmutableList();
     }
 
-    static bool Assign(List<ImmutableArray<Color?>> requirements, int index, ImmutableList<Source> sources, bool[] used, List<(Source, Color?)> plan)
+    /// <summary>
+    /// Sources for the requirements from <paramref name="index"/> on, by backtracking. Requirements that are the same
+    /// (three generic symbols) take sources in increasing order, so the search doesn't try every ordering of the same
+    /// sources among them, which made a cost that can't be paid take exponentially long to rule out.
+    /// </summary>
+    static bool Assign(List<ImmutableArray<Color?>> requirements, int index, ImmutableList<Source> sources, bool[] used, List<(Source, Color?)> plan, int[] chosen)
     {
         if (index == requirements.Count)
             return true;
 
         var requirement = requirements[index];
-        for (var i = 0; i < sources.Count; i++)
+        var start = index > 0 && requirement.SequenceEqual(requirements[index - 1]) ? chosen[index - 1] + 1 : 0;
+        for (var i = start; i < sources.Count; i++)
         {
             if (used[i])
                 continue;
@@ -213,8 +222,9 @@ public static class ManaPayment
                 if (!requirement.Contains(option))
                     continue;
                 used[i] = true;
+                chosen[index] = i;
                 plan.Add((sources[i], option));
-                if (Assign(requirements, index + 1, sources, used, plan))
+                if (Assign(requirements, index + 1, sources, used, plan, chosen))
                     return true;
                 plan.RemoveAt(plan.Count - 1);
                 used[i] = false;

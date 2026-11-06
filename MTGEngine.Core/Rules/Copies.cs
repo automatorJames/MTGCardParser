@@ -21,7 +21,7 @@ public sealed partial class Game
             Emit(new ObjectCreated(new GameObject(id, original.Card with { IsToken = true }, controller, controller, Zone.Stack, CastWith: original.CastWith)));
             var copy = item with { Id = State.NextStackId, Controller = controller, Source = id, Spell = id, Description = $"copy of {item.Description}" };
             if (newTargets && RetargetFor(copy, controller) is { } targets)
-                copy = copy with { Targets = targets };
+                copy = copy with { Targets = targets, TargetCounts = _lastTargetCounts };
             Emit(new SpellCopied(copy));
             copies.Add(id);
         }
@@ -42,6 +42,7 @@ public sealed partial class Game
         if (item is null || item.Targets.Count == 0)
             return;
         ImmutableList<TargetRef> targets;
+        ImmutableList<int> counts = null;
         if (to is Self && source is { } self)
         {
             var slots = TargetSlots.Of(item.Effects).ToList();
@@ -51,9 +52,12 @@ public sealed partial class Game
             targets = item.Targets.SetItem(0, TargetRef.Of(self));
         }
         else if (RetargetFor(item, chooser) is { } chosen)
+        {
             targets = chosen;
+            counts = _lastTargetCounts;
+        }
         else
             return;
-        Emit(new TargetsChanged(item.Id, targets));
+        Emit(new TargetsChanged(item.Id, targets, counts));
     }
 }

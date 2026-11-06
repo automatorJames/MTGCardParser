@@ -335,6 +335,21 @@ public static class Interpreter
             }
 
             // "Double the number of +1/+1 counters on it": as many again of that kind (each kind, for "each kind of counter").
+            // Each target gets one counter, and what's left goes one at a time around them again.
+            case DistributeCounters { Targeted: true, Among: ObjectSelector among } distribute:
+            {
+                var total = Quantities.Evaluate(distribute.Counters.Count, ctx) ?? 0;
+                var targets = Resolver.Chosen(among, among.Binding, ctx).Where(x => x.IsObject && state.Object(x.Object.Value) is { Zone: Zone.Battlefield }).Select(x => x.Object.Value).ToList();
+                if (targets.Count == 0 || total <= 0 || distribute.Counters.Kind is not { } kind)
+                    return ctx;
+                var each = targets.ToDictionary(x => x, _ => 0);
+                for (var i = 0; i < total; i++)
+                    each[targets[i % targets.Count]]++;
+                foreach (var (id, count) in each.Where(x => x.Value > 0))
+                    game.Emit(new CountersChanged(id, kind, count));
+                return ctx with { Affected = each.Where(x => x.Value > 0).Select(x => TargetRef.Of(x.Key)).ToImmutableList(), LastAmount = total };
+            }
+
             case DoubleCounters doubled:
             {
                 var objects = doubled.On is Self ? (ctx.Source is { } own ? [own] : []) : Resolver.Objects(doubled.On, ctx);

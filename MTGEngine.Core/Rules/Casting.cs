@@ -120,7 +120,7 @@ public sealed partial class Game
                 // Entwine: all the modes for an extra cost, if it can be paid on top of what's due.
                 var entwine = OptionalCosts(card, "Entwine").FirstOrDefault();
                 var entwinable = entwine is not null && ManaPayment.CanPay(State, player, CostToCast(obj, player, mana.Plus(entwine), null), HasConvoke(card), new ManaPayment.Purpose(Spell: obj)) ? entwine : null;
-                var (resolved, modeBindings) = ResolveModes(specialized, player, entwinable);
+                var (resolved, modeBindings) = ResolveModes(specialized, player, entwinable, id);
                 effects.Add(resolved);
                 if (modeBindings is not null)
                     bindings = (bindings ?? ImmutableDictionary<string, ImmutableList<TargetRef>>.Empty).SetItems(modeBindings);
@@ -132,11 +132,10 @@ public sealed partial class Game
         var targets = ChooseTargetsFor(slots, player, id);
         if (targets is null)
             return;
+        var targetCounts = _lastTargetCounts;
 
-        // Cost changes are judged with the targets known ("costs {1} less if it targets a tapped creature").
-        var bySelector = new Dictionary<IrNode, ImmutableList<TargetRef>>(ReferenceEqualityComparer.Instance);
-        for (var i = 0; i < slots.Count && i < targets.Count; i++)
-            bySelector[slots[i].Selector] = [targets[i]];
+        // Cost changes are judged with the targets known ("costs {1} less if it targets a tapped creature", strive's "for each target beyond the first").
+        var bySelector = TargetSlots.BySlot(slots, targets, targetCounts);
         var total = free || options.Contains("FaceDown") ? mana : CostToCast(obj, player, mana, bySelector);
         _lastSpent = ManaPool.Empty;
         if (!Pay(player, total, HasConvoke(card), new ManaPayment.Purpose(Spell: obj)))
@@ -166,7 +165,7 @@ public sealed partial class Game
             bindings = (bindings ?? ImmutableDictionary<string, ImmutableList<TargetRef>>.Empty).SetItems(ctx.Binds);
         }
         Emit(new CastOptionsChosen(id, options.ToImmutable(), spent));
-        var item = new StackItem(State.NextStackId, player, id, StackKind.Spell, effects.ToImmutableList(), targets, x, Spell: id, Description: card.Name, Bindings: bindings);
+        var item = new StackItem(State.NextStackId, player, id, StackKind.Spell, effects.ToImmutableList(), targets, x, Spell: id, Description: card.Name, Bindings: bindings, TargetCounts: targetCounts);
         Emit(new SpellCast(item));
     }
 

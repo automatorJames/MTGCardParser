@@ -75,7 +75,7 @@ public sealed record SpeedChanged(PlayerId Player, int Speed, int Turn) : GameEv
 public sealed record ModesChosen(PlayerId Player, ImmutableList<int> Modes) : GameEvent;
 public sealed record CastOptionsChosen(ObjectId Spell, ImmutableHashSet<string> Options, ManaPool Spent = null) : GameEvent;
 public sealed record SpellCopied(StackItem Item) : GameEvent;
-public sealed record TargetsChanged(int StackId, ImmutableList<TargetRef> Targets) : GameEvent;
+public sealed record TargetsChanged(int StackId, ImmutableList<TargetRef> Targets, ImmutableList<int> Counts = null) : GameEvent;
 public sealed record BecameCopy(ObjectId Object, CardDefinition Copy, int? UntilTurn) : GameEvent;
 public sealed record TurnedFace(ObjectId Object, bool FaceDown) : GameEvent;
 public sealed record StepSkipScheduled(PlayerId Player, Step Step) : GameEvent;
@@ -315,7 +315,7 @@ public static class Reducer
                 return state with { Stack = state.Stack.Add(copied.Item), NextStackId = Math.Max(state.NextStackId, copied.Item.Id + 1), ConsecutivePasses = 0 };
 
             case TargetsChanged changed:
-                return state with { Stack = state.Stack.Select(x => x.Id == changed.StackId ? x with { Targets = changed.Targets } : x).ToImmutableList() };
+                return state with { Stack = state.Stack.Select(x => x.Id == changed.StackId ? x with { Targets = changed.Targets, TargetCounts = changed.Counts ?? x.TargetCounts } : x).ToImmutableList() };
 
             case Triggered triggered:
                 return state with { Stack = state.Stack.Add(triggered.Item), NextStackId = Math.Max(state.NextStackId, triggered.Item.Id + 1), ConsecutivePasses = 0 };

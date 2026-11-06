@@ -67,6 +67,11 @@ internal class Program
                 Simulate.Run(args[1], int.TryParse(args.ElementAtOrDefault(2), out var simulated) ? simulated : 200, int.TryParse(args.ElementAtOrDefault(3), out var simulateSeed) ? simulateSeed : 1);
                 break;
 
+            // castcheck rules.jsonl [out.txt]: each executable card cast from the hand of a full board; what the engine offers to cast but then doesn't.
+            case "castcheck":
+                CastCheck.Run(args[1], args.ElementAtOrDefault(2));
+                break;
+
             // dump out-path [definition.json|-] [every]: every corpus line as the grammar tokenizes it, capture by capture, for diffing engines.
             case "dump":
                 Dump.Run(_cardDataGetter, args[1], args.ElementAtOrDefault(2), int.TryParse(args.ElementAtOrDefault(3), out var dumpEvery) ? dumpEvery : 1);

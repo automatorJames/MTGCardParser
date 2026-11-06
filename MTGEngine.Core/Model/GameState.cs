@@ -54,7 +54,8 @@ public sealed record StackItem(
     TargetRef? Subject = null,
     int AbilityIndex = -1,
     ImmutableDictionary<string, ImmutableList<TargetRef>> Bindings = null,
-    int? DelayedId = null)
+    int? DelayedId = null,
+    ImmutableList<int> TargetCounts = null)
 {
     public override string ToString() => Description ?? (Spell is not null ? $"spell {Spell}" : $"ability of {Source}");
 }

@@ -436,10 +436,10 @@ public sealed partial class Game
                 continue;
             if (!card.Abilities.OfType<ActivationLimits>().Where(x => x.ForCasting).SelectMany(x => x.Timings).All(t => TimingAllows(t, obj, player)))
                 continue;
-            if (!TargetsAvailable(SpellSlots(card), player, id))
+            if (!TargetsAvailable(SpellSlots(card), player, id) || !ModesAvailable(card, player, id))
                 continue;
             if (CanAffordToCast(obj, player))
-                actions.Add(new CastSpell(id, card.ManaCost.X > 0 ? ManaPayment.MaxX(state, player, CostToCast(obj, player, card.ManaCost, null)) : 0));
+                actions.Add(new CastSpell(id, card.ManaCost.X > 0 ? PayableX(obj, player, ManaPayment.MaxX(state, player, CostToCast(obj, player, card.ManaCost, null))) : 0));
             // Morph and disguise: cast it face down as a 2/2 creature for {3}, at sorcery speed.
             if (sorcerySpeed && FaceUpKeyword(card) is not null && ManaPayment.CanPay(state, player, ManaCost.Parse("{3}")))
                 actions.Add(new CastSpell(id, 0, Alternative: FaceDownCast));
@@ -497,7 +497,7 @@ public sealed partial class Game
                 continue;
             if (!TargetsAvailable(SpellSlots(card), player, obj.Id))
                 continue;
-            actions.Add(new CastSpell(obj.Id, !permission.Free && card.ManaCost.X > 0 ? ManaPayment.MaxX(state, player, CostToCast(obj, player, card.ManaCost, null)) : 0, permission.Free));
+            actions.Add(new CastSpell(obj.Id, !permission.Free && card.ManaCost.X > 0 ? PayableX(obj, player, ManaPayment.MaxX(state, player, CostToCast(obj, player, card.ManaCost, null))) : 0, permission.Free));
         }
 
         var noActivating = RestrictionsOn(player).Any(x => x.OrActivate);
@@ -574,7 +574,7 @@ public sealed partial class Game
     }
 
     /// <summary>A modal effect with its modes chosen by <paramref name="player"/>: the chosen modes' effects in sequence; any other effect as it is.</summary>
-    (Effect Effect, ImmutableDictionary<string, ImmutableList<TargetRef>> Bindings) ResolveModes(Effect effect, PlayerId player, ManaCost entwine = null)
+    (Effect Effect, ImmutableDictionary<string, ImmutableList<TargetRef>> Bindings) ResolveModes(Effect effect, PlayerId player, ManaCost entwine = null, ObjectId? source = null)
     {
         if (effect is not ModalEffect modal)
             return (effect, null);
@@ -600,6 +600,10 @@ public sealed partial class Game
         for (var i = 0; i < max && !entwined; i++)
         {
             var remaining = Enumerable.Range(0, modal.Modes.Count).Where(m => !chosen.Contains(m)).ToList();
+            // A mode can be chosen only if its targets can be ("counter target spell" with nothing on the stack can't).
+            var possible = remaining.Where(m => TargetsAvailable(TargetSlots.Of([modal.Modes[m].Effect]).ToList(), player, source)).ToList();
+            if (possible.Count > 0 || chosen.Count >= min)
+                remaining = possible;
             if (remaining.Count == 0)
                 break;
             if (chosen.Count >= min && i > 0 && !Decide(new YesNo(player, "Choose another mode?")).Yes)
@@ -612,6 +616,21 @@ public sealed partial class Game
         _modeCost = chosen.Select(m => modal.Modes[m].Cost).OfType<PayMana>().Aggregate(entwined ? entwine : ManaCost.Free, (sum, cost) => sum.Plus(ManaCost.Parse(string.Concat(cost.Symbols))));
         var steps = chosen.Select(m => modal.Modes[m].Effect).ToList();
         return (steps.Count == 1 ? steps[0] : new Sequence(steps), null);
+    }
+
+    /// <summary>Whether a modal spell has enough modes whose targets can be chosen ("choose one —" with each mode's target missing can't be cast).</summary>
+    bool ModesAvailable(CardDefinition card, PlayerId player, ObjectId source) =>
+        card.SpellEffects.OfType<ModalEffect>().All(modal =>
+            modal.Modes.Count(m => TargetsAvailable(TargetSlots.Of([m.Effect]).ToList(), player, source)) >= (modal.Count is "AnyNumber" or "UpToOne" or "UpToTwo" or "UpToFour" or "UpToX" or "UpToThatMany" ? 0 : modal.Count is "Two" or "Both" ? 2 : modal.Count == "Three" ? 3 : modal.Count == "Four" ? 4 : 1));
+
+    /// <summary>The largest X up to <paramref name="max"/> the spell's additional costs allow too ("as an additional cost, discard x cards").</summary>
+    int PayableX(GameObject obj, PlayerId player, int max)
+    {
+        var costs = AdditionalCostsOf(obj.Card).ToList();
+        var x = max;
+        while (x > 0 && !costs.All(cost => AdditionalPayable(cost, player, obj.Id, x)))
+            x--;
+        return x;
     }
 
     bool TargetsAvailable(List<TargetSlot> slots, PlayerId player, ObjectId? source) =>
@@ -768,14 +787,15 @@ public sealed partial class Game
         if (found is LoyaltyAbility loyalty)
         {
             var change = (loyalty.Change as Fixed)?.Value ?? 0;
-            var (loyaltyEffect, loyaltyBindings) = ResolveModes(loyalty.Effect, player);
+            var (loyaltyEffect, loyaltyBindings) = ResolveModes(loyalty.Effect, player, source: source);
             var loyaltySlots = TargetSlots.Of([loyaltyEffect]).ToList();
             var loyaltyTargets = ChooseTargetsFor(loyaltySlots, player, source);
             if (loyaltyTargets is null)
                 return;
+            var loyaltyCounts = _lastTargetCounts;
             if (change != 0)
                 Emit(new CountersChanged(source, "loyalty", change));
-            var loyaltyItem = new StackItem(State.NextStackId, player, source, StackKind.Activated, [loyaltyEffect], loyaltyTargets, 0, Description: $"{obj.Card.Name} [{change:+#;-#;0}]", AbilityIndex: index, Bindings: loyaltyBindings);
+            var loyaltyItem = new StackItem(State.NextStackId, player, source, StackKind.Activated, [loyaltyEffect], loyaltyTargets, 0, Description: $"{obj.Card.Name} [{change:+#;-#;0}]", AbilityIndex: index, Bindings: loyaltyBindings, TargetCounts: loyaltyCounts);
             Emit(new AbilityActivated(loyaltyItem));
             return;
         }
@@ -783,11 +803,12 @@ public sealed partial class Game
         if (found is not ActivatedAbility ability)
             return;
 
-        var (effect, bindings) = ResolveModes(ability.Effect, player);
+        var (effect, bindings) = ResolveModes(ability.Effect, player, source: source);
         var slots = TargetSlots.Of([effect]).ToList();
         var targets = ChooseTargetsFor(slots, player, source);
         if (targets is null)
             return;
+        var targetCounts = _lastTargetCounts;
 
         List<TargetRef> paid = [];
         foreach (var cost in Flatten(ability.Costs))
@@ -891,7 +912,7 @@ public sealed partial class Game
             return;
         }
 
-        var item = new StackItem(State.NextStackId, player, source, StackKind.Activated, [effect], targets, 0, Description: $"{obj.Card.Name}: {Interpreter.Describe(effect)}", Costs: ability.Costs.ToImmutableList(), AbilityIndex: index, Bindings: bindings);
+        var item = new StackItem(State.NextStackId, player, source, StackKind.Activated, [effect], targets, 0, Description: $"{obj.Card.Name}: {Interpreter.Describe(effect)}", Costs: ability.Costs.ToImmutableList(), AbilityIndex: index, Bindings: bindings, TargetCounts: targetCounts);
         Emit(new AbilityActivated(item));
     }
 
@@ -899,6 +920,8 @@ public sealed partial class Game
     ImmutableList<TargetRef> ChooseTargetsFor(List<TargetSlot> slots, PlayerId player, ObjectId? source)
     {
         List<TargetRef> targets = [];
+        List<int> counts = [];
+        _lastTargetCounts = [];
         foreach (var slot in slots)
         {
             var candidates = TargetSlots.Candidates(slot, this, player, source).Except(targets).ToImmutableList();
@@ -907,16 +930,24 @@ public sealed partial class Game
             if (candidates.Count == 0)
             {
                 if (slot.UpTo)
+                {
+                    counts.Add(0);
                     continue;
+                }
                 return null;
             }
             var chosen = Decide(new ChooseTargets(player, "Choose a target", candidates, min, max)).Targets?.Where(candidates.Contains).Distinct().Take(max).ToList() ?? [];
             if (chosen.Count < min)
                 chosen = candidates.Take(min).ToList();
             targets.AddRange(chosen);
+            counts.Add(chosen.Count);
         }
+        _lastTargetCounts = counts.ToImmutableList();
         return targets.ToImmutableList();
     }
+
+    /// <summary>How many targets each slot took in the last <see cref="ChooseTargetsFor"/>, for the stack item made from it.</summary>
+    ImmutableList<int> _lastTargetCounts = [];
 
     bool Pay(PlayerId player, ManaCost cost, bool convoke = false, ManaPayment.Purpose purpose = null)
     {
@@ -1170,14 +1201,15 @@ public sealed partial class Game
                         continue;
                 }
 
-                var slots = TargetSlots.Of([trigger.Ability.Effect is ModalEffect modal ? new Sequence(modal.Modes.Select(m => m.Effect).ToList()) : trigger.Ability.Effect]).ToList();
+                // The modes are chosen as it goes on the stack, then the chosen modes' targets.
+                var (effect, bindings) = ResolveModes(trigger.Ability.Effect, controller, source: trigger.Source.Id);
+                var slots = TargetSlots.Of([effect]).ToList();
                 var targets = ChooseTargetsFor(slots, controller, trigger.Source.Id);
                 if (targets is null)
                     continue;
-
-                var (effect, bindings) = ResolveModes(trigger.Ability.Effect, controller);
+                var targetCounts = _lastTargetCounts;
                 var item = new StackItem(State.NextStackId, controller, trigger.Source.Zone == Zone.Command ? null : trigger.Source.Id, StackKind.Triggered, [effect], targets, 0,
-                    Description: $"{trigger.Source.Card.Name} trigger", Subject: trigger.Subject, Bindings: bindings, DelayedId: trigger.Delayed?.Id, AbilityIndex: trigger.AbilityIndex);
+                    Description: $"{trigger.Source.Card.Name} trigger", Subject: trigger.Subject, Bindings: bindings, DelayedId: trigger.Delayed?.Id, AbilityIndex: trigger.AbilityIndex, TargetCounts: targetCounts);
                 if (trigger.Delayed is { } fired)
                     Emit(new DelayedTriggerRemoved(fired.Id));
                 Emit(new Triggered(item));

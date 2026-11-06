@@ -29,10 +29,8 @@ public sealed record EffectContext(
 
     public static EffectContext For(Game game, StackItem item, TargetRef? triggerSubject = null)
     {
-        var bySelector = new Dictionary<IrNode, ImmutableList<TargetRef>>(ReferenceEqualityComparer.Instance);
         var slots = TargetSlots.Of(item.Effects).ToList();
-        for (var i = 0; i < slots.Count && i < item.Targets.Count; i++)
-            bySelector[slots[i].Selector] = [item.Targets[i]];
+        var bySelector = TargetSlots.BySlot(slots, item.Targets, item.TargetCounts);
 
         var bindings = new Dictionary<string, ImmutableList<TargetRef>>();
         foreach (var (key, value) in item.Bindings ?? ImmutableDictionary<string, ImmutableList<TargetRef>>.Empty)
@@ -49,7 +47,7 @@ public sealed record EffectContext(
 public static class Resolver
 {
     /// <summary>What was chosen for a target selector: its own slot's choice, or the choice for the slot bound to the same name (the same target named again).</summary>
-    static ImmutableList<TargetRef> Chosen(IrNode selector, string binding, EffectContext ctx) =>
+    public static ImmutableList<TargetRef> Chosen(IrNode selector, string binding, EffectContext ctx) =>
         ctx.TargetsBySelector.TryGetValue(selector, out var chosen) ? chosen
         : binding is not null && ctx.Bindings?.TryGetValue(binding, out var named) == true ? named
         : [];
@@ -354,10 +352,38 @@ public static class TargetSlots
                     case ObjectSelector { Quantifier: Quantifier.Target } objects when Fresh(node, objects.Binding):
                         yield return new TargetSlot(objects, objects.Binding, objects.UpTo || objects.Count is Special { Kind: "AnyNumber" }, objects.Count is Special { Kind: "AnyNumber" } ? int.MaxValue : (objects.Count as Fixed)?.Value ?? 1);
                         break;
+                    // "Distribute three +1/+1 counters among one, two, or three target creatures": one slot for up to that many.
+                    case DistributeCounters { Targeted: true, Among: ObjectSelector among } distribute when Fresh(among, among.Binding):
+                        yield return new TargetSlot(among, among.Binding, false, distribute.Range switch { "OneOrTwo" => 2, "OneTwoOrThree" => 3, _ => int.MaxValue });
+                        break;
                     case PlayerSelector { Kind: PlayerKind.TargetPlayer or PlayerKind.TargetOpponent } player when Fresh(node, player.Binding):
                         yield return new TargetSlot(player, player.Binding, false, 1);
                         break;
                 }
+    }
+
+    /// <summary>
+    /// The chosen targets by the slot they were chosen for: <paramref name="counts"/> says how many each slot took
+    /// ("up to two target creatures" may take two, an "up to one" none); without it, one each in order.
+    /// </summary>
+    public static Dictionary<IrNode, ImmutableList<TargetRef>> BySlot(IReadOnlyList<TargetSlot> slots, IReadOnlyList<TargetRef> targets, IReadOnlyList<int> counts)
+    {
+        var bySelector = new Dictionary<IrNode, ImmutableList<TargetRef>>(ReferenceEqualityComparer.Instance);
+        if (counts is null || counts.Count != slots.Count)
+        {
+            for (var i = 0; i < slots.Count && i < targets.Count; i++)
+                bySelector[slots[i].Selector] = [targets[i]];
+            return bySelector;
+        }
+        var at = 0;
+        for (var i = 0; i < slots.Count; i++)
+        {
+            var taken = targets.Skip(at).Take(counts[i]).ToImmutableList();
+            at += counts[i];
+            if (taken.Count > 0)
+                bySelector[slots[i].Selector] = taken;
+        }
+        return bySelector;
     }
 
     /// <summary>What may be chosen for a slot: objects matching its filter in its zone, players for player targets, both for "any target".</summary>

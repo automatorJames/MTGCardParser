@@ -49,6 +49,9 @@ public static class Quantities
                 var players = Resolver.Players(inParty.To, ctx);
                 return players.Sum(player => PartySize(ctx.State.Battlefield.Where(x => x.Controller == player).Select(x => Characteristics.Of(ctx.State, x)).Where(x => x.IsCreature).ToList()));
             }
+            // Strive: "for each target beyond the first", of the targets chosen as the spell is cast.
+            case CountOf { Of: ObjectSelector { Filter: { Kinds: [{ Value: nameof(ObjectKind.Target) }], Qualifiers: [{ Quality: nameof(Distinction.BeyondTheFirst) }] } } }:
+                return Math.Max(0, ctx.TargetsBySelector.Values.Sum(x => x.Count) - 1);
             case CountOf count:
                 return Resolver.Targets(count.Of, ctx).Count;
             case CountersItHad had:

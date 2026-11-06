@@ -253,4 +253,42 @@ public sealed class EngineRoundTwentyTwoTests
         Assert.Contains(effects, x => x.Power == 3);
         Assert.Contains(effects, x => x.Keywords.Contains("Flying"));
     }
+
+    [Fact]
+    public void AerialFormationStrivesForEveryTarget()
+    {
+        var game = Started("Island", new GreedyAgent(attacks: false));
+        Lands(game, "Island", 4);
+        var first = Put(game, Cards.Vanilla("Bears", "{1}{G}", 2, 2), 0);
+        var second = Put(game, Cards.Vanilla("Bears", "{1}{G}", 2, 2), 0);
+        var formation = Put(game, Cards.Named("Aerial Formation"), 0, Zone.Hand);
+
+        game.PlayTurn(new PlayerId(0));
+
+        // Two targets: {U} and {2}{U} for the one beyond the first, and both get +1/+1 and flying.
+        Assert.Equal(Zone.Graveyard, game.State.Object(formation).Zone);
+        Assert.All(game.BattlefieldOf(0).Where(x => x.Card.IsLand), x => Assert.True(x.Tapped));
+        var effects = game.Log.OfType<TemporaryEffectAdded>().Select(x => x.Effect).ToList();
+        foreach (var bears in new[] { first, second })
+        {
+            Assert.Contains(effects, x => x.Target == bears && x.Power == 1);
+            Assert.Contains(effects, x => x.Target == bears && x.Keywords.Contains("Flying"));
+        }
+    }
+
+    [Fact]
+    public void BlessingsOfNatureDistributesCountersAmongItsTargets()
+    {
+        var game = Started("Forest", new GreedyAgent(attacks: false));
+        Lands(game, "Forest", 5);
+        var first = Put(game, Cards.Vanilla("Bears", "{1}{G}", 2, 2), 0);
+        var second = Put(game, Cards.Vanilla("Bears", "{1}{G}", 2, 2), 0);
+        Put(game, Cards.Named("Blessings of Nature"), 0, Zone.Hand);
+
+        game.PlayTurn(new PlayerId(0));
+
+        Assert.Equal(4, game.State.Object(first).CountersOf("+1/+1") + game.State.Object(second).CountersOf("+1/+1"));
+        Assert.True(game.State.Object(first).CountersOf("+1/+1") >= 1);
+        Assert.True(game.State.Object(second).CountersOf("+1/+1") >= 1);
+    }
 }

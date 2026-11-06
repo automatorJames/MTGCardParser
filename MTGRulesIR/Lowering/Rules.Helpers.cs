@@ -60,7 +60,8 @@ public sealed partial class Lowerer
             return new PlayerSelector(PlayerKind.AnyOpponent);
         if (name is "Opponents" or "EachOpponents")
             return new PlayerSelector(PlayerKind.EachOpponent);
-        if (name is "EachPlayers")
+        // "Each player's", and "a", "any", "each", "all" before a zone ("from a graveyard", "in all graveyards"): any player's.
+        if (name is "EachPlayers" or "Any" or "Each" or "All")
             return new PlayerSelector(PlayerKind.EachPlayer);
         if (name.StartsWith("ItsOwner") || name.StartsWith("TheirOwner"))
             return new PlayerSelector(PlayerKind.OwnerOf, new Reference(null, name.StartsWith("Its") ? "its" : "their"));

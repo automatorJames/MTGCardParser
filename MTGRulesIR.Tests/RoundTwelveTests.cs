@@ -98,4 +98,13 @@ public sealed class RoundTwelveTests(GrammarFixture fixture)
 
         Assert.IsType<Reference>(Assert.Single(MTGRulesIR.Lowering.NodeWalker.Nodes(ability).OfType<Exile>()).Objects);
     }
+
+    [Fact]
+    public void AGraveyardIsAnyPlayers()
+    {
+        var ability = fixture.LowerAbility("{1}, sacrifice this artifact: exile target card from a graveyard.");
+
+        var target = Assert.Single(MTGRulesIR.Lowering.NodeWalker.Nodes(ability).OfType<ObjectSelector>(), x => x.Quantifier == Quantifier.Target);
+        Assert.Equal(PlayerKind.EachPlayer, Assert.IsType<PlayerSelector>(target.Filter.Zone.Owner).Kind);
+    }
 }
