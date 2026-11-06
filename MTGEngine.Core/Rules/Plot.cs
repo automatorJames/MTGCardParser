@@ -19,8 +19,30 @@ public sealed partial class Game
     /// <summary>The alternative index that marks casting a plotted card.</summary>
     const int PlottedCast = -11;
 
+    /// <summary>The alternative index that marks casting for a warp cost.</summary>
+    const int WarpCast = -12;
+
+    /// <summary>The alternative index that marks casting for an awaken cost.</summary>
+    const int AwakenCast = -13;
+
     /// <summary>The casting keywords that replace the mana cost when cast from the hand, with their indices and the option a spell cast that way records.</summary>
-    static readonly (string Keyword, int Index, string Option)[] _keywordCasts = [("Evoke", EvokeCast, "Evoked"), ("Dash", DashCast, "Dashed")];
+    static readonly (string Keyword, int Index, string Option)[] _keywordCasts =
+        [("Evoke", EvokeCast, "Evoked"), ("Dash", DashCast, "Dashed"), ("Warp", WarpCast, "Warped"), ("Awaken", AwakenCast, "Awakened")];
+
+    /// <summary>Exiles a warped permanent at the end step; its owner may cast it from exile on a later turn.</summary>
+    public void ExileForLater(ObjectId id)
+    {
+        if (State.Object(id) is not { Zone: Zone.Battlefield })
+            return;
+        MoveToZone(id, Zone.Exile);
+        if (State.Object(id) is { Zone: Zone.Exile })
+            Emit(new ChoiceRecorded(id, "CastableFromExileAfter", State.Turn.ToString()));
+    }
+
+    /// <summary>Whether <paramref name="obj"/> is a card exiled by warp on an earlier turn that <paramref name="player"/> may cast now, as they could from the hand.</summary>
+    bool CanCastWarped(GameObject obj, PlayerId player, bool sorcerySpeed) =>
+        obj is { Zone: Zone.Exile } && obj.Owner == player && int.TryParse(obj.Chosen("CastableFromExileAfter"), out var turn) && turn < State.Turn
+        && (sorcerySpeed || obj.Card.IsInstant || obj.Card.Keywords.Contains("Flash")) && CanAffordToCast(obj, player) && TargetsAvailable(SpellSlots(obj.Card), player, obj.Id);
 
     /// <summary>The ways <paramref name="obj"/> in the hand could be cast for a keyword's cost now.</summary>
     IEnumerable<LegalAction> KeywordCastActions(GameObject obj, PlayerId player)
@@ -67,6 +89,8 @@ public sealed partial class Game
     /// <summary>The plot actions <paramref name="player"/> has now: plotting cards in hand, and casting cards plotted earlier.</summary>
     IEnumerable<LegalAction> PlotActions(PlayerId player, bool sorcerySpeed)
     {
+        foreach (var obj in State.Objects.Values.Where(x => CanCastWarped(x, player, sorcerySpeed)).ToList())
+            yield return new CastSpell(obj.Id, 0);
         if (!sorcerySpeed)
             yield break;
         foreach (var obj in State.Player(player).Hand.Select(State.Object).Where(x => x is not null && CanPlot(x, player, sorcerySpeed)).ToList())

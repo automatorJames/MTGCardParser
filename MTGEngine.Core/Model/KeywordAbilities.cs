@@ -3,6 +3,12 @@ namespace MTGEngine.Core;
 /// <summary>An activated ability that works from a zone other than the battlefield: cycling from the hand, unearth from the graveyard.</summary>
 public sealed record ZoneAbility(Zone Zone, ActivatedAbility Ability) : Ability;
 
+/// <summary>Warp's end: the permanent is exiled, and its owner may cast it from exile on a later turn.</summary>
+public sealed record ExileForLater : Effect;
+
+/// <summary>Abilities <see cref="Objects"/> gain until end of turn (backup's "it gains the following abilities"), unless it's this object itself.</summary>
+public sealed record GrantUntilEndOfTurn(Selector Objects, IReadOnlyList<Ability> Abilities) : Effect;
+
 /// <summary>Discarding the card whose ability this is (cycling).</summary>
 public sealed record DiscardThis : Cost;
 
@@ -40,21 +46,22 @@ public static class KeywordAbilities
     /// <summary>The abilities each keyword line stands for, after the line; a spell's keyword actions as part of the spell.</summary>
     public static IEnumerable<Ability> Expand(IEnumerable<Ability> abilities, bool spell)
     {
-        foreach (var ability in abilities)
+        var list = abilities.ToList();
+        for (var i = 0; i < list.Count; i++)
         {
-            if (ability is not KeywordLine line)
+            if (list[i] is not KeywordLine line)
             {
-                yield return ability;
+                yield return list[i];
                 continue;
             }
             yield return line;
             foreach (var keyword in line.Keywords)
-                foreach (var expanded in Of(keyword, spell))
+                foreach (var expanded in Of(keyword, spell, list.Skip(i + 1).ToList()))
                     yield return expanded;
         }
     }
 
-    static IEnumerable<Ability> Of(KeywordInstance keyword, bool spell)
+    static IEnumerable<Ability> Of(KeywordInstance keyword, bool spell, IReadOnlyList<Ability> following)
     {
         var name = CardDefinition.Normalize(keyword.Keyword);
         var amount = keyword.Amount is Fixed { Value: var n } ? n : 1;
@@ -167,6 +174,38 @@ public static class KeywordAbilities
                     new CreateTokens(new TokenSpec(Types: ["Artifact", "Creature"], Subtypes: ["Servo"], Power: new Fixed(1), Toughness: new Fixed(1)), new Fixed(amount)),
                 ]));
                 break;
+            // Offspring: paid as it's cast (see Game), a 1/1 token copy of it as it enters.
+            case "Offspring" when keyword.Cost is not null:
+                yield return new TriggeredAbility(new ObjectEvent(new Self(), ["EntersTheBattlefield"]),
+                    new CreateTokens(new TokenCopy(new Self(), Stats: new StatsMod(new Fixed(1), new Fixed(1))), new Fixed(1)), new WasCastWith(new Self(), "Offspring"));
+                break;
+            // Warp: cast for the warp cost (see Game), exiled at the next end step, castable from exile on a later turn.
+            case "Warp" when keyword.Cost is not null:
+                yield return new TriggeredAbility(new ObjectEvent(new Self(), ["EntersTheBattlefield"]),
+                    new Delayed(new PhaseEvent(new PhaseRef("EndStep", Next: true)), new ExileForLater()), new WasCastWith(new Self(), "Warped"));
+                break;
+            // Backup N: as it enters, N +1/+1 counters on target creature, which (if another) gains the abilities below until end of turn.
+            case "Backup" when keyword.Amount is Fixed:
+            {
+                var backed = new ObjectSelector(Quantifier.Target, new ObjectFilter(Kinds: [new Term("Creature", "CardType")]), Binding: "#backup");
+                var it = new Reference("#backup", "it");
+                yield return new TriggeredAbility(new ObjectEvent(new Self(), ["EntersTheBattlefield"]), new Sequence([
+                    new PutCounters(backed, new CounterSpec("+1/+1", new Fixed(amount))),
+                    new GrantUntilEndOfTurn(it, following.Where(x => x is not (EffectLine or SpellAbility)).ToList()),
+                ]));
+                break;
+            }
+            // Awaken N: cast for the awaken cost (see Game), it also puts N +1/+1 counters on target land you control, which becomes a 0/0 elemental creature with haste.
+            case "Awaken" when spell && keyword.Cost is not null && keyword.Amount is Fixed:
+            {
+                var land = new ObjectSelector(Quantifier.Target, new ObjectFilter(Kinds: [new Term("Land", "CardType")], Controller: new Controlled(You)), Binding: "#awaken");
+                var it = new Reference("#awaken", "it");
+                yield return new SpellAbility(new Conditional(new WasCastWith(new Self(), "Awakened"), new Sequence([
+                    new PutCounters(land, new CounterSpec("+1/+1", new Fixed(amount))),
+                    new Animate(it, new Fixed(0), new Fixed(0), Subtypes: ["Elemental"], Types: ["Creature"], Keywords: [new KeywordInstance("Haste")], InAddition: true),
+                ])));
+                break;
+            }
             // Evoke: cast for the evoke cost (see Game), it's sacrificed when it enters.
             case "Evoke" when keyword.Cost is not null:
                 yield return new TriggeredAbility(new ObjectEvent(new Self(), ["EntersTheBattlefield"]), new Sacrifice(You, new Self()), new WasCastWith(new Self(), "Evoked"));

@@ -48,4 +48,21 @@ public sealed class RoundTwelveTests(GrammarFixture fixture)
         var those = Assert.Single(MTGRulesIR.Lowering.NodeWalker.Nodes(ability).OfType<ObjectSelector>(), x => x.Quantifier == Quantifier.Those);
         Assert.Contains(those.Filter.With, x => x is Related { Relation: Relation.ExiledWith, To: Self });
     }
+
+    [Fact]
+    public void RevealedCardIsWhatGoesToHandNotThisCreature()
+    {
+        var ability = fixture.LowerAbility("when this creature enters, look at the top four cards of your library. you may reveal a human card from among them and put it into your hand. put the rest on the bottom of your library in a random order.");
+
+        Assert.DoesNotContain(MTGRulesIR.Lowering.NodeWalker.Nodes(ability).OfType<ChangeZone>(), x => x.Objects is Self);
+        Assert.DoesNotContain(MTGRulesIR.Lowering.NodeWalker.Nodes(ability).OfType<Related>(), x => x is { Relation: Relation.Among, To: Self });
+    }
+
+    [Fact]
+    public void ItAfterLookingIsTheCardLookedAt()
+    {
+        var ability = fixture.LowerAbility("whenever this creature or another elemental you control enters, look at the top card of your library. if it's a land card, you may put it onto the battlefield tapped. if you don't put the card onto the battlefield, put it into your hand.");
+
+        Assert.All(MTGRulesIR.Lowering.NodeWalker.Nodes(ability).OfType<ChangeZone>(), x => Assert.IsType<ObjectSelector>(x.Objects));
+    }
 }

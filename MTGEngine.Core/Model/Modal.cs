@@ -12,6 +12,24 @@ public static class Modal
         for (var i = 0; i < list.Count; i++)
         {
             var ability = list[i];
+            // Spree: "+ {1} — …" modes, one or more chosen, each adding its cost.
+            if (ability is KeywordLine spree && spree.Keywords.Any(k => CardDefinition.Normalize(k.Keyword) == "Spree"))
+            {
+                yield return ability;
+                var bullets = new List<Mode>();
+                var next = i + 1;
+                while (next < list.Count && list[next] is Mode bullet)
+                {
+                    bullets.Add(bullet);
+                    next++;
+                }
+                if (bullets.Count > 0)
+                {
+                    yield return new SpellAbility(new ModalEffect("OneOrMore", bullets.ToImmutableList()));
+                    i = next - 1;
+                }
+                continue;
+            }
             if (ChooseModesOf(ability) is not { } choose)
             {
                 if (ability is not Mode)

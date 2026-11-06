@@ -12,7 +12,7 @@ public sealed partial class Game
         var obj = State.Object(id);
         var card = obj.Card;
         var x = card.ManaCost.X > 0 && maxX > 0 && alternative == -1 ? Math.Clamp(Decide(new ChooseNumber(player, "Choose X", 0, maxX)).Number, 0, maxX) : 0;
-        var mana = free || alternative >= 0 || alternative is Flashback or MadnessCast or ForetoldCast or EvokeCast or DashCast or PlottedCast ? ManaCost.Free : card.ManaCost.WithX(x);
+        var mana = free || alternative >= 0 || alternative is Flashback or MadnessCast or ForetoldCast or PlottedCast || KeywordCast(card, alternative) is not null ? ManaCost.Free : card.ManaCost.WithX(x);
         var options = ImmutableHashSet.CreateBuilder<string>();
         if (also is not null)
             options.Add(also);
@@ -77,6 +77,14 @@ public sealed partial class Game
             {
                 mana = mana.Plus(buyback);
                 options.Add("Buyback");
+            }
+
+        // Offspring: an optional additional cost; a 1/1 copy as it enters (KeywordAbilities).
+        foreach (var offspring in OptionalCosts(card, "Offspring"))
+            if (ManaPayment.CanPay(State, player, CostToCast(obj, player, mana.Plus(offspring), null)) && Decide(new YesNo(player, $"Pay offspring {offspring}?")).Yes)
+            {
+                mana = mana.Plus(offspring);
+                options.Add("Offspring");
             }
 
         foreach (var cost in AdditionalCostsOf(card))

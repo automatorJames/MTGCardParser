@@ -292,6 +292,11 @@ public static class Interpreter
                 }
                 if (create.Token is not TokenSpec spec)
                     return Skipped(game, create, "token not described", ctx);
+                // "Create an x/x green elemental creature token, where x is …": its size as of now.
+                if (spec.Power is not (null or Fixed) && Quantities.Evaluate(spec.Power, ctx) is { } tokenPower)
+                    spec = spec with { Power = new Fixed(tokenPower) };
+                if (spec.Toughness is not (null or Fixed) && Quantities.Evaluate(spec.Toughness, ctx) is { } tokenToughness)
+                    spec = spec with { Toughness = new Fixed(tokenToughness) };
                 List<TargetRef> made = [];
                 for (var i = 0; i < count; i++)
                     made.Add(TargetRef.Of(game.CreateToken(spec, ctx.Controller)));
@@ -967,6 +972,18 @@ public static class Interpreter
                 }
                 foreach (var id in objects)
                     game.Emit(new TemporaryEffectAdded(Hold(new TemporaryEffect(id, 0, 0, [], until == -1 ? null : until, Restrictions: restriction.Cant.ToImmutableList()), effect, ctx)));
+                return ctx;
+            }
+
+            case ExileForLater:
+                if (ctx.Source is { } warped)
+                    game.ExileForLater(warped);
+                return ctx;
+
+            case GrantUntilEndOfTurn granted:
+            {
+                foreach (var id in Resolver.Objects(granted.Objects, ctx).Where(id => id != ctx.Source))
+                    game.Emit(new TemporaryEffectAdded(Hold(new TemporaryEffect(id, 0, 0, [], state.Turn, Abilities: granted.Abilities.ToImmutableList()), effect, ctx)));
                 return ctx;
             }
 
