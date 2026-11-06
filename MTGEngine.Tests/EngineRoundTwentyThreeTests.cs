@@ -529,4 +529,18 @@ public sealed class EngineRoundTwentyThreeTests
         game.CheckStateAndTriggers();
         Assert.False(game.State.Object(bears).PhasedOut);
     }
+
+    [Fact]
+    public void DarkConfidantLosesLifeEqualToTheRevealedCardsManaValue()
+    {
+        var game = Started("Swamp", new GreedyAgent(attacks: false));
+        Put(game, Cards.Named("Dark Confidant"), 0);
+        var colossus = Put(game, Cards.Vanilla("Colossus", "{4}", 4, 4), 0, Zone.Hand);
+        game.MoveToZone(colossus, Zone.Library, new PlayerId(0), position: 0);
+
+        game.PlayTurn(new PlayerId(0));
+
+        Assert.Equal(Zone.Hand, game.State.Object(colossus).Zone);
+        Assert.Equal(16, game.P0().Life);
+    }
 }

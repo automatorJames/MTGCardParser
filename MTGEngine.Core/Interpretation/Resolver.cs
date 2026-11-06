@@ -346,6 +346,9 @@ public static class Resolver
             return bound;
         if (reference.Text is "who")
             return ctx.Subject is { } who ? [who] : [];
+        // "At the beginning of your upkeep, reveal the top card … its mana value": an object word means the objects just acted on, not the player the trigger is about.
+        if (ctx.TriggerSubject is { IsPlayer: true } && reference.Text is "it" or "its" or "it's" && ctx.Last?.Where(x => x.IsObject).ToImmutableList() is { Count: > 0 } acted)
+            return acted;
         if (ctx.TriggerSubject is { } subject && (reference.Antecedent is null || reference.Text.StartsWith("that") || reference.Text is "it" or "its" or "they" or "them" or "their"))
             return [subject];
         // "Target player … permanents they control": a player word with nothing before it is that player.

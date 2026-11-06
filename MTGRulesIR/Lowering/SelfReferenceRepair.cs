@@ -102,7 +102,13 @@ public static class SelfReferenceRepair
             if (i > 0 && NodeWalker.Nodes(steps[i - 1]).OfType<CharacteristicOf>().Select(x => x.Of).OfType<ObjectSelector>().FirstOrDefault(x => x.Quantifier == Quantifier.Those) is { } measured)
                 step = (Effect)Rewrite(step, node => node is CharacteristicOf { Of: Reference { Binding: null, Text: "its" or "it" } } of ? of with { Of = measured } : node);
             if (found)
-                step = (Effect)Rewrite(step, node => node is Reference { Text: "it" or "it's" } it && (it.Binding is null || !local.Contains(it.Binding)) ? _thoseCards : node);
+                step = (Effect)Rewrite(step, node => node switch
+                {
+                    Reference { Text: "it" or "it's" } it when it.Binding is null || !local.Contains(it.Binding) => _thoseCards,
+                    // "You lose life equal to its mana value" (not "its owner's hand", which is the card's own).
+                    CharacteristicOf { Of: Reference { Text: "its" } its } of when its.Binding is null || !local.Contains(its.Binding) => of with { Of = _thoseCards },
+                    _ => node,
+                });
             if (!ReferenceEquals(step, steps[i]))
             {
                 repaired ??= [.. steps];
