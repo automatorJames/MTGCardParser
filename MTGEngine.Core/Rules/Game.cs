@@ -466,6 +466,9 @@ public sealed partial class Game
                 var limits = index + 1 < abilities.Count && abilities[index + 1] is ActivationLimits following ? following.Timings : [];
                 if (limits.Any(t => t.Kind == nameof(TimingKind.SorcerySpeed)) && !sorcerySpeed)
                     continue;
+                // Ninjutsu: once blockers are declared, on your own turn.
+                if (zoned.Ability.Effect is NinjutsuEnter && (state.Step != Step.DeclareBlockers || state.ActivePlayer != player))
+                    continue;
                 if (!CanPayCosts(obj, zoned.Ability.Costs, player) || !TargetsAvailable(TargetSlots.Of([zoned.Ability.Effect]).ToList(), player, obj.Id))
                     continue;
                 actions.Add(new ActivateAbility(obj.Id, index, Interpreter.Describe(zoned.Ability.Effect)));

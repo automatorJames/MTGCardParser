@@ -15,6 +15,12 @@ public sealed record AtMaxSpeed : Condition;
 /// <summary>Sunburst's count: the colors of mana spent to cast the object.</summary>
 public sealed record ColorsSpentToCast : Quantity;
 
+/// <summary>"For as long as this artifact remains tapped": the source is tapped (read without its characteristics, which may depend on it).</summary>
+public sealed record SourceTapped : Condition;
+
+/// <summary>Ninjutsu's effect: this card from the hand onto the battlefield tapped and attacking.</summary>
+public sealed record NinjutsuEnter : Effect;
+
 /// <summary>Collect evidence N: exiling cards from your graveyard with total mana value N or more.</summary>
 public sealed record CollectEvidence(int Total) : Effect;
 
@@ -192,6 +198,12 @@ public static class KeywordAbilities
             // Sunburst: it enters with a +1/+1 counter (a charge counter if it isn't a creature) for each color of mana spent to cast it.
             case "Sunburst" when !spell:
                 yield return new ReplacementAbility(new EntersBattlefield(new Self(), With: [new PutCounters(new Self(), new CounterSpec("sunburst", new ColorsSpentToCast()))]));
+                break;
+            // Ninjutsu: {cost}, return an unblocked attacker you control to its owner's hand: put this card onto the battlefield tapped and attacking (once blockers are declared; see Game).
+            case "Ninjutsu" when keyword.Cost is { } cost:
+                yield return new ZoneAbility(Zone.Hand, new ActivatedAbility([cost, new ActionCost(new ChangeZone(
+                    new ObjectSelector(Quantifier.Any, new ObjectFilter(Kinds: [new Term("Creature", "CardType")], Qualifiers: [new Qualifier("Unblocked", Vocabulary: "CombatState")], Controller: new Controlled(You))),
+                    new ZoneRef(nameof(Zone.Hand))))], new NinjutsuEnter()));
                 break;
             // Offspring: paid as it's cast (see Game), a 1/1 token copy of it as it enters.
             case "Offspring" when keyword.Cost is not null:

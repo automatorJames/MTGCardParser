@@ -1008,6 +1008,12 @@ public static class Interpreter
                 return ctx;
             }
 
+            case NinjutsuEnter when ctx.Source is { } ninja && state.Object(ninja) is { Zone: Zone.Hand }:
+                game.MoveToZone(ninja, Zone.Battlefield, ctx.Controller, tapped: true);
+                if (game.State.Object(ninja) is { Zone: Zone.Battlefield })
+                    game.Emit(new EnteredAttacking(ninja));
+                return ctx;
+
             case ExileForLater:
                 if (ctx.Source is { } warped)
                     game.ExileForLater(warped);
@@ -1090,7 +1096,7 @@ public static class Interpreter
                     // "For as long as this artifact remains tapped / on the battlefield", "for as long as you control this creature".
                     var lasting = doesnt.If switch
                     {
-                        Did { Effect: Remains { State: "Tapped" } } => new TemporaryEffect(id, 0, 0, [], null, DoesntUntap: true, While: new ObjectIs(new Self(), [new Term("Tapped", "TapState")]), WhileSource: ctx.Source, WhileController: ctx.Controller, WhileSourceZoneChanges: source?.ZoneChangeCount ?? -1),
+                        Did { Effect: Remains { State: "Tapped" } } => new TemporaryEffect(id, 0, 0, [], null, DoesntUntap: true, While: new SourceTapped(), WhileSource: ctx.Source, WhileController: ctx.Controller, WhileSourceZoneChanges: source?.ZoneChangeCount ?? -1),
                         Did { Effect: Remains } => new TemporaryEffect(id, 0, 0, [], null, DoesntUntap: true, WhileSource: ctx.Source, WhileController: ctx.Controller, WhileSourceZoneChanges: source?.ZoneChangeCount ?? -1),
                         Controls control => new TemporaryEffect(id, 0, 0, [], null, DoesntUntap: true, While: control, WhileSource: ctx.Source, WhileController: ctx.Controller),
                         _ => null,

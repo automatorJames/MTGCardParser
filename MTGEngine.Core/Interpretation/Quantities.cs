@@ -169,6 +169,8 @@ public static class Conditions
         {
             case null:
                 return true;
+            case SourceTapped:
+                return ctx.Source is { } tappedSource && ctx.State.Object(tappedSource) is { Tapped: true };
             case AtMaxSpeed:
                 return ctx.State.Player(ctx.Controller).Speed >= 4;
             case And and:

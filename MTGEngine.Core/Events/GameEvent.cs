@@ -65,6 +65,9 @@ public sealed record EffectSkipped(string Kind, string Why) : GameEvent;
 public sealed record DelayedTriggerCreated(DelayedTrigger Trigger) : GameEvent;
 public sealed record DelayedTriggerRemoved(int Id) : GameEvent;
 /// <summary>A player's speed became <see cref="Speed"/> ("start your engines!"), on turn <see cref="Turn"/>.</summary>
+/// <summary>A permanent put onto the battlefield attacking (ninjutsu): attacking, but it wasn't declared as an attacker.</summary>
+public sealed record EnteredAttacking(ObjectId Object) : GameEvent;
+
 public sealed record BlockRequired(BlockRequirement Requirement) : GameEvent;
 
 public sealed record SpeedChanged(PlayerId Player, int Speed, int Turn) : GameEvent;
@@ -231,6 +234,9 @@ public static class Reducer
                     return state.WithObject(obj with { Damage = obj.Damage + (damage.AsCounters ? 0 : damage.Amount), Counters = damage.Deathtouch ? obj.CounterMap.SetItem("deathtouch-damage", 1) : obj.Counters });
                 return state;
             }
+
+            case EnteredAttacking attacking:
+                return state.Object(attacking.Object) is { } entered ? state.WithObject(entered with { Attacking = true }) : state;
 
             case BlockRequired required:
                 return state with { BlockRequirements = state.BlockRequirementList.Add(required.Requirement) };

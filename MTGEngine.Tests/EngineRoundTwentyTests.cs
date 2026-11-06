@@ -230,4 +230,20 @@ public sealed class EngineRoundTwentyTests
         Assert.Equal(4, traits.Power);
         Assert.True(traits.HasKeyword("Deathtouch"));
     }
+
+    [Fact]
+    public void NinjaOfTheDeepHoursSwapsInForAnUnblockedAttacker()
+    {
+        var game = Started("Island", new GreedyAgent());
+        Put(game, Cards.Basic("Island"), 0);
+        Put(game, Cards.Basic("Island"), 0);
+        var bears = Put(game, Cards.Vanilla("Bears", "{9}", 2, 2), 0);
+        var ninja = Put(game, Cards.Named("Ninja of the Deep Hours"), 0, Zone.Hand);
+
+        game.PlayTurn(new PlayerId(0));
+
+        Assert.Equal(Zone.Hand, game.State.Object(bears).Zone);
+        Assert.Equal(Zone.Battlefield, game.State.Object(ninja).Zone);
+        Assert.Equal(18, game.P1().Life);
+    }
 }
