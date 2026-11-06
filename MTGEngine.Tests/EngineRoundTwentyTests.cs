@@ -91,4 +91,45 @@ public sealed class EngineRoundTwentyTests
         Assert.Equal(3, game.P0().RestrictedList.Sum(x => x.Amount));
         Assert.True(game.P0().Pool.IsEmpty);
     }
+
+    [Fact]
+    public void GiantAmbushBeetleForcesABlock()
+    {
+        var game = Started("Swamp", new GreedyAgent());
+        var bears = Put(game, Cards.Vanilla("Bears", "{1}{G}", 2, 2), 1);
+        Put(game, Cards.Named("Giant Ambush Beetle"), 0);
+
+        game.PlayTurn(new PlayerId(0));
+
+        Assert.Equal(20, game.P1().Life);
+        Assert.Equal(Zone.Graveyard, game.State.Object(bears).Zone);
+    }
+
+    [Fact]
+    public void MarblePriestIsBlockedByWalls()
+    {
+        var game = Started("Plains", new GreedyAgent());
+        Put(game, Cards.Named("Marble Priest"), 0);
+        Put(game, Cards.Vanilla("Stone Wall", "{2}", 0, 4, "Wall"), 1);
+
+        game.PlayTurn(new PlayerId(0));
+
+        Assert.Equal(20, game.P1().Life);
+    }
+
+    [Fact]
+    public void EffectsOnACreatureDontFollowItToANewZone()
+    {
+        var game = Started("Forest", new PassiveAgent());
+        var bears = Put(game, Cards.Vanilla("Bears", "{1}{G}", 2, 2), 0);
+        game.Emit(new TemporaryEffectAdded(new TemporaryEffect(bears, -1, -1, ["Flying"], game.State.Turn)));
+        Assert.Equal(1, Characteristics.Of(game.State, game.State.Object(bears)).Power);
+
+        game.MoveToZone(bears, Zone.Exile);
+        game.MoveToZone(bears, Zone.Battlefield, new PlayerId(0));
+
+        var traits = Characteristics.Of(game.State, game.State.Object(bears));
+        Assert.Equal(2, traits.Power);
+        Assert.False(traits.HasKeyword("Flying"));
+    }
 }

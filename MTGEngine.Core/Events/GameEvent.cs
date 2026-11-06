@@ -65,6 +65,8 @@ public sealed record EffectSkipped(string Kind, string Why) : GameEvent;
 public sealed record DelayedTriggerCreated(DelayedTrigger Trigger) : GameEvent;
 public sealed record DelayedTriggerRemoved(int Id) : GameEvent;
 /// <summary>A player's speed became <see cref="Speed"/> ("start your engines!"), on turn <see cref="Turn"/>.</summary>
+public sealed record BlockRequired(BlockRequirement Requirement) : GameEvent;
+
 public sealed record SpeedChanged(PlayerId Player, int Speed, int Turn) : GameEvent;
 
 public sealed record ModesChosen(PlayerId Player, ImmutableList<int> Modes) : GameEvent;
@@ -157,6 +159,9 @@ public static class Reducer
                     next = next.WithPlayer(owner.WithZoneList(moved.To, list));
                 }
                 var entering = moved.To == Zone.Battlefield;
+                // An object that changes zones is a new object: effects on the old one don't follow it.
+                if (state.Temporary.Any(x => x.Target == obj.Id))
+                    next = next with { Temporary = next.Temporary.RemoveAll(x => x.Target == obj.Id) };
                 if (moved.From == Zone.Battlefield)
                     next = next with { LastKnown = (next.LastKnown ?? ImmutableDictionary<ObjectId, GameObject>.Empty).SetItem(obj.Id, obj) };
                 next = next.WithObject(obj with
@@ -225,6 +230,9 @@ public static class Reducer
                     return state.WithObject(obj with { Damage = obj.Damage + (damage.AsCounters ? 0 : damage.Amount), Counters = damage.Deathtouch ? obj.CounterMap.SetItem("deathtouch-damage", 1) : obj.Counters });
                 return state;
             }
+
+            case BlockRequired required:
+                return state with { BlockRequirements = state.BlockRequirementList.Add(required.Requirement) };
 
             case SpeedChanged speed:
                 return state.WithPlayer(state.Player(speed.Player) with { Speed = speed.Speed, SpeedRaisedOnTurn = speed.Turn });

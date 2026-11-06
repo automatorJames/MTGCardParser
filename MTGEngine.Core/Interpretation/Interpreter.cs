@@ -678,6 +678,15 @@ public static class Interpreter
                 return ctx;
             }
 
+            // "Target creature blocks this creature this turn if able"; "it must be blocked this turn if able".
+            case MustBlock must when must.Attacker is not null && must.Duration is ThisTurn or UntilPhase { Phase.Phase: "EndOfTurn" }:
+            {
+                var attackers = must.Attacker is Self ? (ctx.Source is { } own ? [own] : []) : Resolver.Objects(must.Attacker, ctx);
+                foreach (var blocker in Resolver.Objects(must.Blockers, ctx))
+                    foreach (var attacker in attackers)
+                        game.Emit(new BlockRequired(new BlockRequirement(blocker, attacker, state.Turn)));
+                return ctx;
+            }
             case MustBlock mustBlock:
             {
                 var until = UntilTurn(mustBlock.Duration, state) ?? state.Turn;
@@ -990,6 +999,13 @@ public static class Interpreter
                     exiled.Add(TargetRef.Of(card.Id));
                 }
                 return ctx with { Affected = exiled.ToImmutableList() };
+            }
+
+            case MustBeBlocked must when must.Duration is ThisTurn or UntilPhase { Phase.Phase: "EndOfTurn" }:
+            {
+                foreach (var attacker in must.Objects is Self ? (ctx.Source is { } own ? [own] : []) : Resolver.Objects(must.Objects, ctx))
+                    game.Emit(new BlockRequired(new BlockRequirement(null, attacker, state.Turn)));
+                return ctx;
             }
 
             case ExileForLater:

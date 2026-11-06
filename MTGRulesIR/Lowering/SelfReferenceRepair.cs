@@ -21,6 +21,8 @@ public static class SelfReferenceRepair
         node switch
         {
             Related { Relation: Relation.Among, To: Self } among => among with { To = _thoseCards },
+            // "You may have target creature block it this turn if able": "it" is this creature, not the blocker.
+            MustBlock { Blockers: ObjectSelector { Binding: { } blockers }, Attacker: Reference { Binding: var it } } must when it == blockers => must with { Attacker = new Self() },
             Sequence sequence when Repaired(sequence.Steps) is { } steps => new Sequence(steps),
             _ => node,
         };

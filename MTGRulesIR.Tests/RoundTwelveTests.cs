@@ -73,4 +73,12 @@ public sealed class RoundTwelveTests(GrammarFixture fixture)
 
         Assert.IsNotType<Self>(Assert.Single(MTGRulesIR.Lowering.NodeWalker.Nodes(ability).OfType<DoesntUntap>()).Objects);
     }
+
+    [Fact]
+    public void TargetCreatureBlocksThisCreature()
+    {
+        var ability = fixture.LowerAbility("when this creature enters, you may have target creature block it this turn if able.");
+
+        Assert.IsType<Self>(Assert.Single(MTGRulesIR.Lowering.NodeWalker.Nodes(ability).OfType<MustBlock>()).Attacker);
+    }
 }

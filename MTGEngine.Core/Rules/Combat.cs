@@ -67,6 +67,30 @@ public sealed partial class Game
             .Select(x => x.First())
             .ToList();
 
+        // Required blocks: "target creature blocks this creature this turn if able", "all walls able to block this creature
+        // do so", and "must be blocked if able", met where a legal block allows and the blocker isn't blocking already.
+        var required = State.BlockRequirementList.Select(x => (x.Blocker, x.Attacker)).ToList();
+        foreach (var (effect, objects, source) in Characteristics.StaticEffects(State))
+            if (effect is MustBlock { Duration: null } must)
+            {
+                var ctx = EffectContext.Snapshot(State, source.Controller, source.Id);
+                // With no attacker named ("creatures your opponents control block each combat if able"), any it can.
+                var targets = must.Attacker is null ? attackers.Select(x => x.Id).ToImmutableList() : must.Attacker is Self ? [source.Id] : Resolver.Objects(must.Attacker, ctx);
+                foreach (var blocker in blockers.Where(x => Characteristics.Covers(State, objects, source, x)))
+                    foreach (var attacker in targets)
+                        required.Add((blocker.Id, attacker));
+            }
+        foreach (var (mustBlock, attacker) in required)
+        {
+            if (mustBlock is { } blocker)
+            {
+                if (chosen.All(x => x.Blocker != blocker) && legal.Contains((blocker, attacker)))
+                    chosen.Add((blocker, attacker));
+            }
+            else if (chosen.All(x => x.Attacker != attacker) && legal.FirstOrDefault(x => x.Attacker == attacker && chosen.All(y => y.Blocker != x.Blocker)) is { Blocker.Value: > 0 } any)
+                chosen.Add(any);
+        }
+
         // Creatures that block each combat if able do.
         foreach (var blocker in blockers)
             if (Characteristics.Of(State, blocker).Cant("MustBlock") && chosen.All(x => x.Blocker != blocker.Id) && legal.FirstOrDefault(x => x.Blocker == blocker.Id) is { Blocker.Value: > 0 } forced)

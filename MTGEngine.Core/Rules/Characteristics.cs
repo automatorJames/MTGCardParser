@@ -404,6 +404,7 @@ public sealed record Characteristics(
             GainControl { Duration: null } => [effect],
             ExtraLandPlays { EachTurn: true, Duration: null } => [effect],
             DoesntUntap { If: null } => [effect],
+            MustBlock { Duration: null } => [effect],
             Sequence sequence => sequence.Steps.SelectMany(Continuous),
             _ => [],
         };
@@ -433,6 +434,8 @@ public sealed record Characteristics(
             ExtraLandPlays => new Self(),
             // And untapping (Game.DoesntUntap).
             DoesntUntap doesnt => doesnt.Objects ?? new Self(),
+            // And blocking requirements (Game.DeclareBlockers).
+            MustBlock must => must.Blockers ?? new Self(),
             _ => null,
         };
 

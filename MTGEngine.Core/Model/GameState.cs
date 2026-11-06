@@ -78,6 +78,9 @@ public sealed record TemporaryEffect(ObjectId Target, int Power, int Toughness, 
 public sealed record PlayRestriction(PlayerId Player, string Verb, Selector What, ObjectId? Source, PlayerId Controller, int? ExpiresAfterTurn, bool OrActivate = false, Quantity MoreThan = null);
 
 /// <summary>A card a permanent exiled, for "cards exiled with this artifact".</summary>
+/// <summary>On turn <see cref="Turn"/>, <see cref="Blocker"/> blocks <see cref="Attacker"/> if able; with no blocker, something blocks it if able.</summary>
+public sealed record BlockRequirement(ObjectId? Blocker, ObjectId Attacker, int Turn);
+
 public sealed record ExileLink(ObjectId Source, int SourceZoneChanges, ObjectId Card, int CardZoneChanges);
 
 /// <summary>A link from a permanent to what it exiled "until this leaves the battlefield".</summary>
@@ -170,8 +173,12 @@ public sealed record GameState(
     ImmutableList<PlayRestriction> PlayRestrictions = null,
     ImmutableList<(PlayerId Player, Step Step)> SkipNext = null,
     ImmutableList<ControlEffect> ControlEffects = null,
-    ImmutableDictionary<ObjectId, GameObject> LastKnown = null)
+    ImmutableDictionary<ObjectId, GameObject> LastKnown = null,
+    ImmutableList<BlockRequirement> BlockRequirements = null)
 {
+    /// <summary>Blocks required this turn: "target creature blocks this creature this turn if able", "must be blocked this turn if able".</summary>
+    public ImmutableList<BlockRequirement> BlockRequirementList => (BlockRequirements ?? ImmutableList<BlockRequirement>.Empty).Where(x => x.Turn == Turn).ToImmutableList();
+
     /// <summary>
     /// What a permanent was as it last left the battlefield, for "if it had a death counter on it" read after it died:
     /// last known information.
