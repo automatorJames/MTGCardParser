@@ -413,10 +413,12 @@ public static class TargetSlots
     }
 
     /// <summary>What may be chosen for a slot: objects matching its filter in its zone, players for player targets, both for "any target".</summary>
-    public static ImmutableList<TargetRef> Candidates(TargetSlot slot, Game game, PlayerId controller, ObjectId? source)
+    public static ImmutableList<TargetRef> Candidates(TargetSlot slot, Game game, PlayerId controller, ObjectId? source, int x = 0, Dictionary<IrNode, ImmutableList<TargetRef>> chosen = null)
     {
         var state = game.State;
-        var ctx = new EffectContext(game, controller, source, new Dictionary<IrNode, ImmutableList<TargetRef>>(ReferenceEqualityComparer.Instance));
+        // "Target creature card with mana value x or less": judged with the x chosen; "target land that player
+        // controls" after "choose target opponent": with the targets chosen before it.
+        var ctx = new EffectContext(game, controller, source, chosen ?? new Dictionary<IrNode, ImmutableList<TargetRef>>(ReferenceEqualityComparer.Instance), x);
 
         switch (slot.Selector)
         {

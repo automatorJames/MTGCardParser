@@ -129,7 +129,7 @@ public sealed partial class Game
         mana = mana.Plus(_modeCost);
         // Bestowed, it's an aura spell with enchant creature.
         var slots = options.Contains("FaceDown") ? [] : options.Contains("Bestowed") ? [_bestowSlot] : card.IsPermanentCard ? SpellSlots(card) : TargetSlots.Of(effects).ToList();
-        var targets = ChooseTargetsFor(slots, player, id);
+        var targets = ChooseTargetsFor(slots, player, id, x);
         if (targets is null)
             return;
         var targetCounts = _lastTargetCounts;

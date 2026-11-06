@@ -445,7 +445,9 @@ public sealed partial class Game
                 continue;
             if (!card.Abilities.OfType<ActivationLimits>().Where(x => x.ForCasting).SelectMany(x => x.Timings).All(t => TimingAllows(t, obj, player)))
                 continue;
-            if (!TargetsAvailable(SpellSlots(card), player, id) || !ModesAvailable(card, player, id))
+            // A spell whose targets depend on x ("with mana value x or less") is judged with the largest x it could be cast for.
+            var largestX = card.ManaCost.X > 0 ? PayableX(obj, player, ManaPayment.MaxX(state, player, CostToCast(obj, player, card.ManaCost, null))) : 0;
+            if (!TargetsAvailable(SpellSlots(card), player, id, largestX) || !ModesAvailable(card, player, id))
                 continue;
             if (CanAffordToCast(obj, player))
                 actions.Add(new CastSpell(id, card.ManaCost.X > 0 ? PayableX(obj, player, ManaPayment.MaxX(state, player, CostToCast(obj, player, card.ManaCost, null))) : 0));
@@ -642,8 +644,20 @@ public sealed partial class Game
         return x;
     }
 
-    bool TargetsAvailable(List<TargetSlot> slots, PlayerId player, ObjectId? source) =>
-        slots.All(slot => slot.UpTo || TargetSlots.Candidates(slot, this, player, source).Count > 0);
+    bool TargetsAvailable(List<TargetSlot> slots, PlayerId player, ObjectId? source, int x = 0)
+    {
+        // Each slot is judged with a candidate for those before it, as they'd be chosen in order.
+        var chosen = new Dictionary<IrNode, ImmutableList<TargetRef>>(ReferenceEqualityComparer.Instance);
+        foreach (var slot in slots)
+        {
+            var candidates = TargetSlots.Candidates(slot, this, player, source, x, chosen);
+            if (candidates.Count == 0 && !slot.UpTo)
+                return false;
+            if (candidates.Count > 0)
+                chosen[slot.Selector] = [candidates[0]];
+        }
+        return true;
+    }
 
     bool CanPayCosts(GameObject source, IReadOnlyList<Cost> costs, PlayerId player)
     {
@@ -926,15 +940,16 @@ public sealed partial class Game
     }
 
     /// <summary>Targets for each slot, chosen by <paramref name="player"/>; null when a required slot has no legal target.</summary>
-    ImmutableList<TargetRef> ChooseTargetsFor(List<TargetSlot> slots, PlayerId player, ObjectId? source)
+    ImmutableList<TargetRef> ChooseTargetsFor(List<TargetSlot> slots, PlayerId player, ObjectId? source, int x = 0)
     {
         List<TargetRef> targets = [];
         List<int> counts = [];
         _lastTargetCounts = [];
+        var chosenSoFar = new Dictionary<IrNode, ImmutableList<TargetRef>>(ReferenceEqualityComparer.Instance);
         foreach (var slot in slots)
         {
             // An object can't be chosen twice among a spell's targets here (the lowering doesn't always say "another"); a player can.
-            var candidates = TargetSlots.Candidates(slot, this, player, source).Where(x => x.IsPlayer || !targets.Contains(x)).ToImmutableList();
+            var candidates = TargetSlots.Candidates(slot, this, player, source, x, chosenSoFar).Where(c => c.IsPlayer || !targets.Contains(c)).ToImmutableList();
             var max = Math.Min(slot.Count, candidates.Count);
             var min = slot.UpTo ? 0 : Math.Min(1, max);
             if (candidates.Count == 0)
@@ -950,6 +965,8 @@ public sealed partial class Game
             if (chosen.Count < min)
                 chosen = candidates.Take(min).ToList();
             targets.AddRange(chosen);
+            if (chosen.Count > 0)
+                chosenSoFar[slot.Selector] = chosen.ToImmutableList();
             counts.Add(chosen.Count);
         }
         _lastTargetCounts = counts.ToImmutableList();

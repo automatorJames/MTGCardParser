@@ -377,4 +377,31 @@ public sealed class EngineRoundTwentyThreeTests
         Assert.Equal(Zone.Graveyard, game.State.Object(bears).Zone);
         Assert.Equal(1, game.State.Object(vampire).CountersOf("+1/+1"));
     }
+
+    [Fact]
+    public void StirTheGraveTargetsWithTheXItsCastFor()
+    {
+        var game = Started("Swamp", new GreedyAgent(attacks: false));
+        Lands(game, "Swamp", 4);
+        var fallen = Put(game, Cards.Vanilla("Fallen", "{2}{B}", 2, 1), 0, Zone.Graveyard);
+        Put(game, Cards.Named("Stir the Grave"), 0, Zone.Hand);
+
+        game.PlayTurn(new PlayerId(0));
+
+        Assert.Equal(Zone.Battlefield, game.State.Object(fallen).Zone);
+    }
+
+    [Fact]
+    public void TheFallOfKroogTargetsALandOfTheChosenOpponent()
+    {
+        var game = Started("Mountain", new GreedyAgent(attacks: false));
+        Lands(game, "Mountain", 6);
+        var land = Put(game, Cards.Basic("Plains"), 1);
+        Put(game, Cards.Named("The Fall of Kroog"), 0, Zone.Hand);
+
+        game.PlayTurn(new PlayerId(0));
+
+        Assert.Equal(Zone.Graveyard, game.State.Object(land).Zone);
+        Assert.Equal(17, game.P1().Life);
+    }
 }
