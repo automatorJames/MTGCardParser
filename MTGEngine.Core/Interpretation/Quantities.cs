@@ -51,6 +51,10 @@ public static class Quantities
             }
             case CountOf count:
                 return Resolver.Targets(count.Of, ctx).Count;
+            case CountersItHad had:
+                return ctx.Source is { } holder && ctx.State.Object(holder) is { } held
+                    ? (held.Zone == Zone.Battlefield ? held : ctx.State.LastKnownOf(holder) ?? held).CountersOf(had.Kind)
+                    : 0;
             case ColorsSpentToCast:
                 return ctx.Source is { } spent && ctx.State.Object(spent)?.SpentToCast is { } pool ? Colors.All.Count(c => pool.Of(c) > 0) : 0;
             // "You gain life equal to the life lost this way": what the step before did.
@@ -173,6 +177,14 @@ public static class Conditions
                 return ctx.Source is { } tappedSource && ctx.State.Object(tappedSource) is { Tapped: true };
             case AtMaxSpeed:
                 return ctx.State.Player(ctx.Controller).Speed >= 4;
+            case Evolves:
+            {
+                if (ctx.Source is not { } evolving || state.Object(evolving) is not { } self || ctx.TriggerSubject is not { IsObject: true } entered || state.Object(entered.Object.Value) is not { } other)
+                    return null;
+                var mine = Characteristics.Of(state, self);
+                var theirs = Characteristics.Of(state, other);
+                return theirs.Power > mine.Power || theirs.Toughness > mine.Toughness;
+            }
             case And and:
             {
                 bool? result = true;

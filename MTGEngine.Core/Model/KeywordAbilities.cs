@@ -21,6 +21,15 @@ public sealed record SourceTapped : Condition;
 /// <summary>Ninjutsu's effect: this card from the hand onto the battlefield tapped and attacking.</summary>
 public sealed record NinjutsuEnter : Effect;
 
+/// <summary>Embalm's and eternalize's token: a copy of this card, except it's <see cref="Color"/>, a zombie in addition to its other types, with no mana cost, and (eternalize) <see cref="Size"/>/<see cref="Size"/>.</summary>
+public sealed record ZombieCopyOfThis(string Color, int? Size = null) : Effect;
+
+/// <summary>"Its +1/+1 counters" (modular): the counters of <see cref="Kind"/> on this object, as it last was on the battlefield once it has left.</summary>
+public sealed record CountersItHad(string Kind) : Quantity;
+
+/// <summary>Evolve's condition: the creature that entered has greater power or greater toughness than this creature.</summary>
+public sealed record Evolves : Condition;
+
 /// <summary>Collect evidence N: exiling cards from your graveyard with total mana value N or more.</summary>
 public sealed record CollectEvidence(int Total) : Effect;
 
@@ -245,6 +254,60 @@ public static class KeywordAbilities
             case "Dash" when keyword.Cost is not null:
                 yield return new TriggeredAbility(new ObjectEvent(new Self(), ["EntersTheBattlefield"]),
                     new Delayed(new PhaseEvent(new PhaseRef("EndStep", Next: true)), new ChangeZone(new Self(), new ZoneRef(nameof(Zone.Hand)))), new WasCastWith(new Self(), "Dashed"));
+                break;
+            // Scavenge: {cost}, exile this card from your graveyard: +1/+1 counters equal to its power on target creature, as a sorcery.
+            case "Scavenge" when keyword.Cost is { } cost:
+                yield return new ZoneAbility(Zone.Graveyard, new ActivatedAbility([cost, new ActionCost(new Exile(new Self()))],
+                    new PutCounters(new ObjectSelector(Quantifier.Target, new ObjectFilter(Kinds: [new Term("Creature", "CardType")])), new CounterSpec("+1/+1", new CharacteristicOf(new Self(), "Power")))));
+                yield return new ActivationLimits([new Timing(nameof(TimingKind.SorcerySpeed))]);
+                break;
+            // Embalm and eternalize: {cost}, exile this card from your graveyard: a token copy of it, a white (or black 4/4) zombie with no mana cost, as a sorcery.
+            case "Embalm" or "Eternalize" when keyword.Cost is { } cost:
+                yield return new ZoneAbility(Zone.Graveyard, new ActivatedAbility([cost, new ActionCost(new Exile(new Self()))],
+                    name == "Embalm" ? new ZombieCopyOfThis("White") : new ZombieCopyOfThis("Black", 4)));
+                yield return new ActivationLimits([new Timing(nameof(TimingKind.SorcerySpeed))]);
+                break;
+            // Transmute: {cost}, discard this card: search your library for a card with the same mana value, reveal it, put it into your hand, as a sorcery.
+            case "Transmute" when keyword.Cost is { } cost:
+                yield return new ZoneAbility(Zone.Hand, new ActivatedAbility([cost, new DiscardThis()], new SearchLibrary(You, nameof(Zone.Library),
+                    [new ObjectSelector(Quantifier.Count, new ObjectFilter(Kinds: [new Term(nameof(ObjectKind.Card), nameof(ObjectKind))], With: [new CharacteristicBound(["ManaValue"], new CharacteristicOf(new Self(), "ManaValue"), Comparison.Equal)], Zone: new ZoneRef(nameof(Zone.Library))), new Fixed(1))], Reveal: true,
+                    Placement: new ChangeZone(new ObjectSelector(Quantifier.Those, new ObjectFilter(Kinds: [new Term(nameof(ObjectKind.Card), nameof(ObjectKind))], Qualifiers: [new Qualifier("Found", Vocabulary: "Provenance")])), new ZoneRef(nameof(Zone.Hand))),
+                    Ending: new Shuffle())));
+                yield return new ActivationLimits([new Timing(nameof(TimingKind.SorcerySpeed))]);
+                break;
+            // Modular N: enters with N +1/+1 counters; when it dies, you may put its +1/+1 counters on target artifact creature.
+            case "Modular" when keyword.Amount is Fixed:
+                yield return new ReplacementAbility(new EntersBattlefield(new Self(), With: [new PutCounters(new Self(), new CounterSpec("+1/+1", new Fixed(amount)))]));
+                yield return new TriggeredAbility(new ObjectEvent(new Self(), ["Dies"]), new Optional(new PutCounters(
+                    new ObjectSelector(Quantifier.Target, new ObjectFilter(Kinds: [new Term("Creature", "CardType")], Qualifiers: [new Qualifier("Artifact", Vocabulary: "CardType")])),
+                    new CounterSpec("+1/+1", new CountersItHad("+1/+1")))));
+                break;
+            // Unleash: you may have it enter with a +1/+1 counter; it can't block as long as it has one.
+            case "Unleash":
+                yield return new ReplacementAbility(new EntersBattlefield(new Self(), With: [new Optional(new PutCounters(new Self(), new CounterSpec("+1/+1", new Fixed(1))))]));
+                yield return new StaticAbility(new CombatRestriction(new Self(), ["Block"], If: new HasCountersCondition(new Self(), new CounterSpec("+1/+1", null))));
+                break;
+            // Mentor: whenever it attacks, a +1/+1 counter on target attacking creature with lesser power.
+            case "Mentor":
+                yield return new TriggeredAbility(new ObjectEvent(new Self(), ["Attacks"]), new PutCounters(
+                    new ObjectSelector(Quantifier.Target, new ObjectFilter(Kinds: [new Term("Creature", "CardType")], Qualifiers: [new Qualifier("Attacking", Vocabulary: "CombatState")],
+                        With: [new CharacteristicBound(["Power"], new CharacteristicOf(new Self(), "Power"), Comparison.Less)])),
+                    new CounterSpec("+1/+1", new Fixed(1))));
+                break;
+            // Evolve: whenever another creature you control enters, if it has greater power or toughness than this creature, a +1/+1 counter on this creature.
+            case "Evolve":
+                yield return new TriggeredAbility(
+                    new ObjectEvent(new ObjectSelector(Quantifier.Any, new ObjectFilter(Kinds: [new Term("Creature", "CardType")], Controller: new Controlled(You)), Other: true), ["EntersTheBattlefield"]),
+                    new PutCounters(new Self(), new CounterSpec("+1/+1", new Fixed(1))), new Evolves());
+                break;
+            // Extort: whenever you cast a spell, you may pay {W/B}; if you do, each opponent loses 1 life and you gain that much life.
+            case "Extort":
+                yield return new TriggeredAbility(
+                    new SpellCastEvent(You, new ObjectSelector(Quantifier.Any, new ObjectFilter(Kinds: [new Term("Spell", nameof(ObjectKind))]))),
+                    new Sequence([
+                        new Optional(new PayCost(new PayMana(["{w/b}"]))),
+                        new Conditional(new OutcomeCondition(You, "Did"), new Sequence([new LoseLife(new PlayerSelector(PlayerKind.EachOpponent), new Fixed(1)), new GainLife(You, new Special("ThatMuch"))])),
+                    ]));
                 break;
             case "Affinity" when AffinityKind(keyword.Parameter) is { } kind:
                 yield return new StaticAbility(new CostModification(new Self(), new PayMana(["{1}"]), "Less", "Cast",

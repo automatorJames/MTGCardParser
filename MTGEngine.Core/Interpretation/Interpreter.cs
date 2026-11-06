@@ -1014,6 +1014,20 @@ public static class Interpreter
                     game.Emit(new EnteredAttacking(ninja));
                 return ctx;
 
+            case ZombieCopyOfThis zombie when ctx.Source is { } embalmed && state.Object(embalmed) is { } card:
+            {
+                var copy = card.Card with
+                {
+                    ManaCost = ManaCost.Free,
+                    Colors = [MTGEngine.Core.Colors.OfName(zombie.Color).Value],
+                    Subtypes = card.Card.Subtypes.Add("Zombie"),
+                    Power = zombie.Size ?? card.Card.Power,
+                    Toughness = zombie.Size ?? card.Card.Toughness,
+                };
+                var token = game.CreateCopyToken(copy, ctx.Controller);
+                return ctx with { Affected = [TargetRef.Of(token)], Last = [TargetRef.Of(token)] };
+            }
+
             case ExileForLater:
                 if (ctx.Source is { } warped)
                     game.ExileForLater(warped);
