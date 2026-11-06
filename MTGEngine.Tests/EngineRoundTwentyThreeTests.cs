@@ -587,4 +587,19 @@ public sealed class EngineRoundTwentyThreeTests
         Assert.Equal(Zone.Library, game.State.Object(bears).Zone);
         Assert.Equal(Zone.Graveyard, game.State.Object(stroke).Zone);
     }
+
+    [Fact]
+    public void CausticExhaleBeholdsADragonInsteadOfPaying()
+    {
+        var game = Started("Swamp", new GreedyAgent(attacks: false));
+        Lands(game, "Swamp", 1);
+        var wyrm = Put(game, Cards.Vanilla("Wyrm", "{5}", 5, 5, "Dragon"), 0, Zone.Hand);
+        var bears = Put(game, Cards.Vanilla("Bears", "{1}{G}", 2, 2), 1);
+        Put(game, Cards.Named("Caustic Exhale"), 0, Zone.Hand);
+
+        game.PlayTurn(new PlayerId(0));
+
+        Assert.Equal(Zone.Graveyard, game.State.Object(bears).Zone);
+        Assert.Equal(Zone.Hand, game.State.Object(wyrm).Zone);
+    }
 }

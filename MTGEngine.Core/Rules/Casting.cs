@@ -449,6 +449,12 @@ public sealed partial class Game
                         return Matching(objects) >= 1;
                     case ChooseEffect:
                         return true;
+                    // Behold a dragon: choose a dragon you control or reveal a dragon card from your hand.
+                    case KeywordAction { Actions: [{ Keyword: "Behold" }], Objects: ObjectSelector beheld }:
+                        return KeywordActions.Beholdable(beheld, ctx).Count > 0;
+                    // "… and exile it": what the step before chose.
+                    case Exile { Objects: Reference } or ChangeZone { Objects: Reference }:
+                        return true;
                     case CollectEvidence evidence:
                         return State.Player(player).Graveyard.Where(id => id != spell).Sum(id => State.Object(id)?.Card.ManaCost.ManaValue ?? 0) >= evidence.Total;
                     case Sacrifice { Objects: Self }:

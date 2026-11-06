@@ -3,7 +3,13 @@ namespace MTGEngine.Core;
 /// <summary>Keyword actions as effects: scry, surveil, investigate, bolster, proliferate, explore, adapt, monstrosity, populate.</summary>
 public static class KeywordActions
 {
-    public static readonly HashSet<string> Supported = ["Scry", "Surveil", "Investigate", "Bolster", "Proliferate", "Explore", "Adapt", "Monstrosity", "Populate", "Fateseal", "Connive", "Learn", "Clash", "Discover", "Manifest", "ManifestDread", "Cascade", "Detain", "Incubate", "Earthbend"];
+    public static readonly HashSet<string> Supported = ["Scry", "Surveil", "Investigate", "Bolster", "Proliferate", "Explore", "Adapt", "Monstrosity", "Populate", "Fateseal", "Connive", "Learn", "Clash", "Discover", "Manifest", "ManifestDread", "Cascade", "Detain", "Incubate", "Earthbend", "Behold"];
+
+    /// <summary>What a player could behold: a permanent they control, or a card in their hand, that matches.</summary>
+    public static ImmutableList<TargetRef> Beholdable(ObjectSelector beheld, EffectContext ctx) =>
+        ctx.State.Battlefield.Where(x => x.Controller == ctx.Controller && Filters.Matches(ctx.State, beheld.Filter, x, ctx.Controller, ctx.Source, ctx: ctx))
+            .Concat(ctx.State.InZone(Zone.Hand, ctx.Controller).Where(x => x.Id != ctx.Source && Resolver.PoolMatches(beheld.Filter, x, ctx)))
+            .Select(x => TargetRef.Of(x.Id)).ToImmutableList();
 
     /// <summary>Earthbend's target, which the keyword names without a selector of its own: "target land you control".</summary>
     public static readonly ObjectSelector EarthbendTarget = new(Quantifier.Target, new ObjectFilter(Kinds: [new Term("Land", "CardType")], Controller: new Controlled(new PlayerSelector(PlayerKind.You))));
@@ -97,6 +103,16 @@ public static class KeywordActions
                     if (amount > 0)
                         game.Emit(new CountersChanged(id, "+1/+1", amount));
                     ctx = ctx with { Last = [land], Affected = [land] };
+                    break;
+                }
+                // Behold: choose a matching permanent you control or reveal a matching card from your hand ("… and exile it").
+                case "Behold" when action.Objects is ObjectSelector beheld:
+                {
+                    var candidates = Beholdable(beheld, ctx);
+                    if (candidates.Count == 0)
+                        break;
+                    var chosen = candidates.Count == 1 ? candidates[0] : game.Decide(new ChooseTargets(ctx.Controller, "Behold", candidates, 1, 1)).Targets?.FirstOrDefault(candidates.Contains) ?? candidates[0];
+                    ctx = ctx with { Last = [chosen], Affected = [chosen] };
                     break;
                 }
                 // Detain: until your next turn, the permanents can't attack or block and their activated abilities can't be activated.
