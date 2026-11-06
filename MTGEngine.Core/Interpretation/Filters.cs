@@ -219,6 +219,8 @@ public static class Filters
             "CounterKind" => true,
             "PermanentDesignation" => Designated(state, obj, qualifier.Quality),
             // Leftovers and "… this way" name a pool the resolver supplies; within it they hold.
+            // "Each creature dealt damage this turn".
+            "DamageHistory" when qualifier.Quality == "DealtDamageThisTurn" => state is null || state.ThisTurnEventList.OfType<DamageDealt>().Any(x => x.Target.IsObject && x.Target.Object == obj.Id),
             "LeftoverCards" or "AffectedThisWay" or "DamageHistory" or "ThisWayAction" => true,
             // "Each turn" in "your second spell each turn" is the period the ordinal counts over; "activated" in "activated abilities of …" is read where abilities are.
             "SpellCountPeriod" or "AbilityCategory" => true,
@@ -304,6 +306,12 @@ public static class Filters
             {
                 var holders = exiledWith.To is Self ? (source is { } own ? [own] : []) : ctx is not null ? Resolver.Objects(exiledWith.To, ctx) : [];
                 return obj.Zone == Zone.Exile && state.ExileLinkList.Any(x => holders.Contains(x.Source) && x.Card == obj.Id && x.CardZoneChanges == obj.ZoneChangeCount);
+            }
+            // "A creature dealt damage by this creature this turn".
+            case Related { Relation: Relation.DealtDamageBy } dealtBy:
+            {
+                var dealers = dealtBy.To is Self ? (source is { } own ? [own] : []) : ctx is not null ? Resolver.Objects(dealtBy.To, ctx) : [];
+                return state.ThisTurnEventList.OfType<DamageDealt>().Any(x => x.Target.IsObject && x.Target.Object == obj.Id && x.Source is { } dealer && dealers.Contains(dealer));
             }
             case Related { Relation: Relation.Among } related when ctx is not null:
                 return Resolver.Objects(related.To, ctx).Contains(obj.Id);

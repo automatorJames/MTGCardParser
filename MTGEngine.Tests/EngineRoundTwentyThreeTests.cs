@@ -359,4 +359,22 @@ public sealed class EngineRoundTwentyThreeTests
         Assert.Equal(Zone.Hand, game.State.Object(theirs).Zone);
         Assert.True(game.State.Object(mine).Zone is Zone.Hand or Zone.Stack or Zone.Battlefield);
     }
+
+    [Fact]
+    public void SengirVampireGrowsWhenACreatureItDamagedDies()
+    {
+        var game = Started("Swamp", new GreedyAgent(attacks: false));
+        var vampire = Put(game, Cards.Named("Sengir Vampire"), 0);
+        var bears = Put(game, Cards.Vanilla("Bears", "{1}{G}", 2, 2), 1);
+        var other = Put(game, Cards.Vanilla("Elf", "{G}", 1, 1), 1);
+        game.Emit(new TurnBegan(1, new PlayerId(0)));
+
+        game.DealDamage(vampire, TargetRef.Of(bears), 2, combat: false);
+        game.Destroy(other);
+        game.CheckStateAndTriggers();
+        game.ResolveStack();
+
+        Assert.Equal(Zone.Graveyard, game.State.Object(bears).Zone);
+        Assert.Equal(1, game.State.Object(vampire).CountersOf("+1/+1"));
+    }
 }
