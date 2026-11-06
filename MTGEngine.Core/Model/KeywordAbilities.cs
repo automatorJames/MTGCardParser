@@ -36,6 +36,9 @@ public sealed record BecomeSaddled(Selector Objects = null) : Effect;
 /// <summary>A creature cast for its sneak cost enters attacking (and tapped).</summary>
 public sealed record EnterAttacking : Effect;
 
+/// <summary>Rampage's count: the creatures blocking this one beyond the first.</summary>
+public sealed record BlockersBeyondFirst : Quantity;
+
 /// <summary>Collect evidence N: exiling cards from your graveyard with total mana value N or more.</summary>
 public sealed record CollectEvidence(int Total) : Effect;
 
@@ -71,7 +74,7 @@ public static class KeywordAbilities
     }
 
     /// <summary>The keyword actions a spell's keyword line does as it resolves ("scry 1.").</summary>
-    public static readonly ImmutableHashSet<string> Actions = ["Scry", "Surveil", "Investigate", "Proliferate", "Fateseal", "Populate", "Bolster", "Explore", "Adapt", "Learn", "Clash"];
+    public static readonly ImmutableHashSet<string> Actions = ["Scry", "Surveil", "Investigate", "Proliferate", "Fateseal", "Populate", "Bolster", "Explore", "Adapt", "Learn", "Clash", "Incubate"];
 
     /// <summary>The abilities each keyword line stands for, after the line; a spell's keyword actions as part of the spell.</summary>
     public static IEnumerable<Ability> Expand(IEnumerable<Ability> abilities, bool spell)
@@ -88,6 +91,9 @@ public static class KeywordAbilities
             foreach (var keyword in line.Keywords)
                 foreach (var expanded in Of(keyword, spell, list.Skip(i + 1).ToList()))
                     yield return expanded;
+            foreach (var other in line.Other ?? [])
+                if (Rampage(other) is { } rampage)
+                    yield return rampage;
         }
     }
 
@@ -385,6 +391,15 @@ public static class KeywordAbilities
                 break;
         }
     }
+
+    /// <summary>Rampage N, which the lowering leaves as text: whenever it becomes blocked, +N/+N until end of turn for each creature blocking it beyond the first.</summary>
+    static TriggeredAbility Rampage(IrNode other) =>
+        other is OpaqueNode { Glyph: "Rampage", Text: var text } && int.TryParse(text.Split(' ').LastOrDefault(), out var n)
+            ? new TriggeredAbility(new ObjectEvent(new Self(), ["BecomesBlocked"]), new Pump(new Self(), new Fixed(n), new Fixed(n), PerEach: new BlockersBeyondFirst(), Duration: EndOfTurn))
+            : null;
+
+    /// <summary>Whether the engine carries out a keyword line's entry the lowering left as text.</summary>
+    public static bool OtherHandled(IrNode other) => Rampage(other) is not null;
 
     /// <summary>A keyword cost as a cost the engine pays: "blight 1" puts a -1/-1 counter on a creature you control, "collect evidence 3" exiles cards from your graveyard. Any other cost as it is.</summary>
     public static Cost CostOf(Cost cost) =>

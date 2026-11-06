@@ -416,7 +416,7 @@ public static class InterpreterSupport
             PayCost { Plus: not null } => "PayCost.Plus",
             Mode { Cost: not (null or PayMana) } => "Mode.Cost",
             ActivatedAbility activated when activated.Costs.Any(x => x is ActionCost { Action: var action } && !Game.PayableActions.Contains(action.GetType())) => "ActivatedAbility.Costs",
-            KeywordLine line when line.Other is { Count: > 0 } => "KeywordLine.Other",
+            KeywordLine line when line.Other is { Count: > 0 } && !line.Other.All(KeywordAbilities.OtherHandled) => "KeywordLine.Other",
             KeywordLine line when line.Keywords.FirstOrDefault(x => !Keywords.Handles(x.Keyword)) is { } keyword => $"Keyword.{CardDefinition.Normalize(keyword.Keyword)}",
             KeywordLine line when line.Keywords.Any(x => CardDefinition.Normalize(x.Keyword) == "Suspend" && !Game.Suspendable(x)) => "Keyword.Suspend.X",
             KeywordLine line when line.Keywords.Any(x => CardDefinition.Normalize(x.Keyword) is "Vanishing" or "Fading" && x.Amount is not Fixed { Value: > 0 }) => "Keyword.Vanishing.Amount",

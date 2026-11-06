@@ -61,6 +61,8 @@ public static class Quantities
                 return ctx.Source is { } holder && ctx.State.Object(holder) is { } held
                     ? (held.Zone == Zone.Battlefield ? held : ctx.State.LastKnownOf(holder) ?? held).CountersOf(had.Kind)
                     : 0;
+            case BlockersBeyondFirst:
+                return ctx.Source is { } blocked ? Math.Max(0, ctx.State.Battlefield.Count(x => x.Blocking == blocked) - 1) : 0;
             case ColorsSpentToCast:
                 return ctx.Source is { } spent && ctx.State.Object(spent)?.SpentToCast is { } pool ? Colors.All.Count(c => pool.Of(c) > 0) : 0;
             // "You gain life equal to the life lost this way": what the step before did.

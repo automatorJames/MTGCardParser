@@ -111,7 +111,8 @@ public sealed record CardDefinition(
         // A line of keywords the engine carries out: what follows them is their reminder text, which the engine doesn't need.
         for (var i = 0; i < abilities.Count; i++)
             // A spell's keyword action in the middle of the line ("counter target spell …. clash with an opponent. if you win, …") is one of its steps.
-            if (abilities[i] is KeywordLine handled && handled.Keywords.All(k => MTGEngine.Core.Keywords.Handles(k.Keyword)) && !(i > 0 && handled.Keywords.All(k => KeywordAbilities.Actions.Contains(Normalize(k.Keyword)))))
+            if (abilities[i] is KeywordLine handled && handled.Keywords.All(k => MTGEngine.Core.Keywords.Handles(k.Keyword))
+                && !(i > 0 && handled.Keywords.All(k => KeywordAbilities.Actions.Contains(Normalize(k.Keyword))) && !ReminderFollows(line.Text, handled)))
                 return abilities.Take(i + 1);
         // "When this creature enters, it connives. (draw a card, then discard a card. …)": the reminder of a keyword
         // action the engine carries out, at the end of the line, explains the action.
@@ -133,6 +134,10 @@ public sealed record CardDefinition(
         var effect = new Sequence([mode.Effect, .. line.Abilities.Skip(1).Cast<SpellAbility>().Select(x => x.Effect)]);
         return line with { Abilities = [mode with { Effect = effect }] };
     }
+
+    /// <summary>Whether the line's text puts the keyword's reminder right after it ("incubate 1. (create an incubator …)"), so what follows it is reminder.</summary>
+    static bool ReminderFollows(string text, KeywordLine line) =>
+        line.Keywords.Any(k => System.Text.RegularExpressions.Regex.IsMatch(text ?? "", $@"\b{System.Text.RegularExpressions.Regex.Escape(k.Keyword.ToLowerInvariant())}\b[^.(]*\.?\s*\(", System.Text.RegularExpressions.RegexOptions.IgnoreCase));
 
     /// <summary>An ability word or flavor word only labels the ability it introduces; the engine acts on the ability.</summary>
     public static Ability Unwrap(Ability ability) =>

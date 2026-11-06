@@ -268,4 +268,35 @@ public sealed class EngineRoundTwentyThreeTests
         Assert.Equal(Zone.Hand, game.State.Object(theirs).Zone);
         Assert.True(game.State.Object(mine).Zone is Zone.Hand or Zone.Stack or Zone.Battlefield);
     }
+
+    [Fact]
+    public void FrostGiantRampagesForEachBlockerBeyondTheFirst()
+    {
+        var game = GameExtensions.Started(Cards.DeckOf("A", (Cards.Basic("Mountain"), 20)), Cards.DeckOf("B", (Cards.Basic("Plains"), 20)), new GreedyAgent(), new GreedyAgent(attacks: false, blocks: true), 0);
+        var giant = Put(game, Cards.Named("Frost Giant"), 0);
+        for (var i = 0; i < 3; i++)
+            Put(game, Cards.Vanilla("Wall", "{1}{W}", 0, 1), 1);
+
+        game.PlayTurn(new PlayerId(0));
+
+        // Three blockers: two beyond the first, rampage 2 gives +4/+4.
+        Assert.Contains(game.Log.OfType<TemporaryEffectAdded>(), x => x.Effect.Target == giant && x.Effect.Power == 4 && x.Effect.Toughness == 4);
+    }
+
+    [Fact]
+    public void SearingBarbIncubatesATokenThatHatches()
+    {
+        var game = Started("Mountain", new GreedyAgent(attacks: false));
+        Lands(game, "Mountain", 5);
+        Put(game, Cards.Named("Searing Barb"), 0, Zone.Hand);
+
+        game.PlayTurn(new PlayerId(0));
+
+        // Cast for {2}{r}, then {2} more transforms the incubator into a 1/1 Phyrexian artifact creature.
+        var incubator = Assert.Single(game.BattlefieldOf(0), x => x.Card.IsToken);
+        Assert.Equal(1, incubator.CountersOf("+1/+1"));
+        var traits = Characteristics.Of(game.State, incubator);
+        Assert.True(traits.IsCreature);
+        Assert.Equal(1, traits.Power);
+    }
 }

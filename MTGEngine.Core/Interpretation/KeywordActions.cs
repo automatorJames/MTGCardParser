@@ -3,7 +3,7 @@ namespace MTGEngine.Core;
 /// <summary>Keyword actions as effects: scry, surveil, investigate, bolster, proliferate, explore, adapt, monstrosity, populate.</summary>
 public static class KeywordActions
 {
-    public static readonly HashSet<string> Supported = ["Scry", "Surveil", "Investigate", "Bolster", "Proliferate", "Explore", "Adapt", "Monstrosity", "Populate", "Fateseal", "Connive", "Learn", "Clash", "Discover", "Manifest", "ManifestDread", "Cascade", "Detain"];
+    public static readonly HashSet<string> Supported = ["Scry", "Surveil", "Investigate", "Bolster", "Proliferate", "Explore", "Adapt", "Monstrosity", "Populate", "Fateseal", "Connive", "Learn", "Clash", "Discover", "Manifest", "ManifestDread", "Cascade", "Detain", "Incubate"];
 
     public static EffectContext Execute(KeywordAction action, EffectContext ctx)
     {
@@ -19,6 +19,16 @@ public static class KeywordActions
                 case "Surveil":
                     Scry(game, ctx.Controller, amount, toGraveyard: true);
                     break;
+                // Incubate N: an Incubator artifact token with N +1/+1 counters and "{2}: transform this artifact", whose back is a 0/0 Phyrexian artifact creature.
+                case "Incubate":
+                {
+                    var hatch = new ActivatedAbility([new PayMana(["{2}"])], new Animate(new Self(), new Fixed(0), new Fixed(0), Subtypes: ["Phyrexian"], Types: ["Artifact", "Creature"]));
+                    var incubator = game.CreateToken(new TokenSpec(Types: ["Artifact"], Subtypes: ["Incubator"], Abilities: [hatch]), ctx.Controller);
+                    if (amount > 0)
+                        game.Emit(new CountersChanged(incubator, "+1/+1", amount));
+                    ctx = ctx with { Last = [TargetRef.Of(incubator)], Affected = [TargetRef.Of(incubator)] };
+                    break;
+                }
                 case "Investigate":
                     for (var i = 0; i < amount; i++)
                         game.CreateToken(new TokenSpec(Types: ["Artifact"], Subtypes: ["Clue"], Predefined: "Clue"), ctx.Controller);
