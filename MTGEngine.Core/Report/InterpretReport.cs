@@ -373,7 +373,7 @@ public static class InterpreterSupport
             CantBeTargeted { Duration: { } duration } when !Keeps(duration) => $"CantBeTargeted.Duration[{Describe(duration)}]",
             EffectEvent { Effect: not (Draw or Sacrifice or PlayCard { Card: ObjectSelector }) } effectEvent => $"EffectEvent.{effectEvent.Effect?.GetType().Name}",
             CombatRestriction { Duration: { } duration } when !Keeps(duration) => $"CombatRestriction.Duration[{Describe(duration)}]",
-            SearchLibrary { Zones: not (null or "Library" or "LibraryAndOrGraveyard") } search => $"SearchLibrary.{search.Zones}",
+            SearchLibrary { Zones: not (null or "Library" or "LibraryAndOrGraveyard" or "LibraryAndGraveyard" or "GraveyardHandAndLibrary" or "GraveyardHandAndOrLibrary") } search => $"SearchLibrary.{search.Zones}",
             EntersBattlefield enters when enters.States?.Any(x => x != "Tapped") == true => $"EntersBattlefield.{enters.States.First(x => x != "Tapped")}",
             EntersBattlefield { Duration: not null } => "EntersBattlefield.Duration",
             ReplacementAbility { Effect: not (EntersBattlefield or AsEventHappens or Replacement) } replacement => $"ReplacementAbility[{replacement.Effect.GetType().Name}]",

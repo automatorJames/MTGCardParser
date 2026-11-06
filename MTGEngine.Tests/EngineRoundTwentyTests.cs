@@ -158,4 +158,22 @@ public sealed class EngineRoundTwentyTests
 
         Assert.Equal(1, game.State.Object(boggart).CountersOf("+1/+1"));
     }
+
+    [Fact]
+    public void CranialExtractionExilesEveryCopyEverywhere()
+    {
+        var game = Started("Swamp", new GreedyAgent(attacks: false));
+        for (var i = 0; i < 4; i++)
+            Put(game, Cards.Basic("Swamp"), 0);
+        var inHand = Put(game, Cards.Named("Shock"), 1, Zone.Hand);
+        var inGraveyard = Put(game, Cards.Named("Shock"), 1, Zone.Graveyard);
+        Put(game, Cards.Named("Cranial Extraction"), 0, Zone.Hand);
+
+        game.PlayTurn(new PlayerId(0));
+
+        var shocks = game.State.Objects.Values.Where(x => x.Card.Name == "Shock").ToList();
+        Assert.All(shocks, x => Assert.Equal(Zone.Exile, x.Zone));
+        Assert.Equal(Zone.Exile, game.State.Object(inHand).Zone);
+        Assert.Equal(Zone.Exile, game.State.Object(inGraveyard).Zone);
+    }
 }

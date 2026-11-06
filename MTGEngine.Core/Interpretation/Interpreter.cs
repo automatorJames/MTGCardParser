@@ -1049,13 +1049,22 @@ public static class Interpreter
                     {
                         if (wanted is not ObjectSelector selector)
                             continue;
-                        var count = selector.Quantifier == Quantifier.Count ? Quantities.Evaluate(selector.Count, ctx) ?? 1 : selector.Count is Special { Kind: "AnyNumber" } ? int.MaxValue : 1;
-                        var searched = search.Zones is "LibraryAndOrGraveyard" ? state.InZone(Zone.Library, searcher).Concat(state.InZone(Zone.Graveyard, searcher)) : state.InZone(Zone.Library, searcher);
+                        var all = selector.Quantifier == Quantifier.All || selector.Count is Special { Kind: "All" };
+                        var count = selector.Quantifier == Quantifier.Count ? Quantities.Evaluate(selector.Count, ctx) ?? 1 : selector.Count is Special { Kind: "AnyNumber" } || all ? int.MaxValue : 1;
+                        // The zones are the searcher's; "search target player's library", "search its controller's graveyard, hand, and library" are searched by you.
+                        var searched = search.Zones switch
+                        {
+                            "LibraryAndOrGraveyard" or "LibraryAndGraveyard" => state.InZone(Zone.Library, searcher).Concat(state.InZone(Zone.Graveyard, searcher)),
+                            "GraveyardHandAndLibrary" or "GraveyardHandAndOrLibrary" => state.InZone(Zone.Graveyard, searcher).Concat(state.InZone(Zone.Hand, searcher)).Concat(state.InZone(Zone.Library, searcher)),
+                            _ => state.InZone(Zone.Library, searcher),
+                        };
+                        var chooser = search.Searcher is PlayerSelector { Kind: PlayerKind.TargetPlayer or PlayerKind.TargetOpponent } || search.Zones.Contains("Hand") ? ctx.Controller : searcher;
                         var library = searched.Where(x => Filters.Matches(state, (selector.Filter ?? new ObjectFilter()) with { Zone = null }, x with { Zone = Zone.Battlefield }, searcher, ctx.Source, ctx: ctx) || Filters.Matches(state, selector.Filter, x, searcher, ctx.Source, ctx: ctx)).Select(x => TargetRef.Of(x.Id)).ToImmutableList();
                         var take = Math.Min(count, library.Count);
                         if (take == 0)
                             continue;
-                        var chosen = game.Decide(new ChooseTargets(searcher, "Search: choose cards", library, 0, take)).Targets?.Where(library.Contains).Distinct().Take(take).ToList() ?? library.Take(take).ToList();
+                        // "For all cards with that name": every one found.
+                        var chosen = all ? library.ToList() : game.Decide(new ChooseTargets(chooser, "Search: choose cards", library, 0, take)).Targets?.Where(library.Contains).Distinct().Take(take).ToList() ?? library.Take(take).ToList();
                         found.AddRange(chosen);
                     }
                 ctx = ctx with { Affected = found.ToImmutableList(), Last = found.Count > 0 ? found.ToImmutableList() : ctx.Last };
