@@ -116,7 +116,7 @@ public sealed class CorpusLowering
                     continue;
             }
 
-        abilities = abilities.Select(SelfReferenceRepair.Repair).ToList();
+        abilities = SelfReferenceRepair.RepairLine(abilities.Select(SelfReferenceRepair.Repair).ToList());
         var opaque = abilities.SelectMany(OpaqueNodes.In).Select(x => x.Glyph).ToList();
         var open = abilities.SelectMany(OpenSlots.In).ToList();
         return (new LineRules(line.SourceText.LineIndex, line.SourceText.FormattedText, abilities, opaque, open), new LineOrigins(ctx.Origins, ctx.UnboundReferences));

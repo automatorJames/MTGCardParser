@@ -924,7 +924,8 @@ public sealed partial class Game
         _lastTargetCounts = [];
         foreach (var slot in slots)
         {
-            var candidates = TargetSlots.Candidates(slot, this, player, source).Except(targets).ToImmutableList();
+            // An object can't be chosen twice among a spell's targets here (the lowering doesn't always say "another"); a player can.
+            var candidates = TargetSlots.Candidates(slot, this, player, source).Where(x => x.IsPlayer || !targets.Contains(x)).ToImmutableList();
             var max = Math.Min(slot.Count, candidates.Count);
             var min = slot.UpTo ? 0 : Math.Min(1, max);
             if (candidates.Count == 0)

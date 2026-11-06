@@ -1174,7 +1174,7 @@ public static class Interpreter
                 var chooser = choosers.Count > 0 ? choosers[0] : ctx.Controller;
                 var from = Resolver.Objects(choose.From, ctx);
                 var pool = from.Count > 0 ? from : (ctx.Affected ?? ctx.Last ?? []).Where(x => x.IsObject).Select(x => x.Object.Value).ToImmutableList();
-                var candidates = pool.Where(id => state.Object(id) is { } obj && (choose.Filter is null || Filters.Matches(state, choose.Filter with { Zone = null }, obj with { Zone = Zone.Battlefield }, ctx.Controller, ctx.Source, ctx: ctx))).Select(TargetRef.Of).ToImmutableList();
+                var candidates = pool.Where(id => state.Object(id) is { } obj && (choose.Filter is null || Resolver.PoolMatches(choose.Filter with { Zone = null }, obj, ctx))).Select(TargetRef.Of).ToImmutableList();
                 var count = Math.Min(Quantities.Evaluate(choose.Count, ctx) ?? 1, candidates.Count);
                 var picked = candidates.Count == 0 ? [] : game.Decide(new ChooseTargets(chooser, "Choose cards", candidates, choose.UpTo ? 0 : count, count)).Targets?.Where(candidates.Contains).Distinct().Take(count).ToImmutableList() ?? candidates.Take(count).ToImmutableList();
                 var rest = pool.Select(TargetRef.Of).Where(x => !picked.Contains(x)).ToImmutableList();

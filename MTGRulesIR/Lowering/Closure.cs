@@ -15,7 +15,10 @@ public static class NodeWalker
     public static PropertyInfo[] PropertiesOf(Type type) =>
         _properties.GetOrAdd(type, x => x.GetProperties().Where(p => p.GetIndexParameters().Length == 0 && p.GetMethod?.IsPublic == true).ToArray());
 
-    public static IEnumerable<IrNode> Nodes(IrNode root)
+    public static IEnumerable<IrNode> Nodes(IrNode root) => Nodes(root, null);
+
+    /// <summary>The nodes under <paramref name="root"/>, not going into a child <paramref name="into"/> says no to (nor yielding it).</summary>
+    public static IEnumerable<IrNode> Nodes(IrNode root, Func<IrNode, bool> into)
     {
         if (root is null)
             yield break;
@@ -27,12 +30,15 @@ public static class NodeWalker
             var value = property.GetValue(root);
 
             if (value is IrNode child)
-                foreach (var found in Nodes(child))
-                    yield return found;
+            {
+                if (into is null || into(child))
+                    foreach (var found in Nodes(child, into))
+                        yield return found;
+            }
             else if (value is IEnumerable list and not string)
                 foreach (var item in list)
-                    if (item is IrNode element)
-                        foreach (var found in Nodes(element))
+                    if (item is IrNode element && (into is null || into(element)))
+                        foreach (var found in Nodes(element, into))
                             yield return found;
         }
     }

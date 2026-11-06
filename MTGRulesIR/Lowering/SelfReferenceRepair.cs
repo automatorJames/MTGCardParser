@@ -20,6 +20,24 @@ public static class SelfReferenceRepair
 
     public static Ability Repair(Ability ability) => (Ability)Rewrite(ability, Fix);
 
+    /// <summary>
+    /// A line's spell abilities read as one sequence of steps: "reveal the top card of target opponent's library. if
+    /// it's a land, you gain 1 life" lowers as two spell abilities, and "it's" is the card revealed by the first.
+    /// </summary>
+    public static List<Ability> RepairLine(List<Ability> abilities)
+    {
+        var spells = abilities.Select((ability, i) => (ability, i)).Where(x => x.ability is SpellAbility).ToList();
+        if (spells.Count < 2)
+            return abilities;
+        var steps = spells.Select(x => ((SpellAbility)x.ability).Effect).ToList();
+        if (Repaired(steps) is not { } repaired)
+            return abilities;
+        var result = abilities.ToList();
+        for (var n = 0; n < spells.Count; n++)
+            result[spells[n].i] = ((SpellAbility)spells[n].ability) with { Effect = repaired[n] };
+        return result;
+    }
+
     static IrNode Fix(IrNode node) =>
         node switch
         {
@@ -55,6 +73,9 @@ public static class SelfReferenceRepair
             // "An opponent chooses a permanent you control other than this creature and exiles it", "choose target permanent card in your graveyard … return it to your hand": "it" is what was chosen.
             if (i > 0 && steps[i - 1] is ChooseEffect { From: [ObjectSelector { Binding: { } chosen }] } && WithObjects(step, new Reference(chosen, "it")) is { } acting)
                 step = acting;
+            // "You draw cards equal to the sacrificed creature's power, then you gain life equal to its toughness": "its" is that creature.
+            if (i > 0 && NodeWalker.Nodes(steps[i - 1]).OfType<CharacteristicOf>().Select(x => x.Of).OfType<ObjectSelector>().FirstOrDefault(x => x.Quantifier == Quantifier.Those) is { } measured)
+                step = (Effect)Rewrite(step, node => node is CharacteristicOf { Of: Reference { Binding: null, Text: "its" or "it" } } of ? of with { Of = measured } : node);
             if (found)
                 step = (Effect)Rewrite(step, node => node is Reference { Text: "it" or "it's" } it && (it.Binding is null || !local.Contains(it.Binding)) ? _thoseCards : node);
             if (!ReferenceEquals(step, steps[i]))

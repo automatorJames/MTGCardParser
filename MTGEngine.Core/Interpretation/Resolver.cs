@@ -290,7 +290,7 @@ public static class Resolver
             case PlayerKind.AttackingPlayer:
                 return [state.ActivePlayer];
             case PlayerKind.ThatPlayer:
-                return ctx?.Last?.Where(x => x.IsPlayer).Select(x => x.Player.Value).ToImmutableList() ?? [];
+                return ThatPlayer(ctx);
             case PlayerKind.EnchantedPlayer:
                 return [];
             case PlayerKind.Chosen:
@@ -316,6 +316,22 @@ public static class Resolver
             else
                 return false;
         return true;
+    }
+
+    /// <summary>
+    /// "That player", "their": the players the step before acted on; else the one player the
+    /// effect targets ("target opponent loses half their life"), or the player the trigger is about.
+    /// </summary>
+    static ImmutableList<PlayerId> ThatPlayer(EffectContext ctx)
+    {
+        if (ctx is null)
+            return [];
+        if (ctx.Last?.Where(x => x.IsPlayer).Select(x => x.Player.Value).ToImmutableList() is { Count: > 0 } last)
+            return last;
+        var targeted = ctx.TargetsBySelector.Values.SelectMany(x => x).Where(x => x.IsPlayer).Select(x => x.Player.Value).Distinct().ToImmutableList();
+        if (targeted.Count == 1)
+            return targeted;
+        return ctx.TriggerSubject is { IsPlayer: true } subject ? [subject.Player.Value] : [];
     }
 
     static ImmutableList<TargetRef> Referenced(Reference reference, EffectContext ctx)
@@ -346,7 +362,8 @@ public static class TargetSlots
         var bound = new HashSet<string>();
         bool Fresh(IrNode node, string binding) => seen.Add(node) && (binding is null || bound.Add(binding));
         foreach (var root in roots)
-            foreach (var node in MTGRulesIR.Lowering.NodeWalker.Nodes(root))
+            // An ability the effect grants or a token has ("gains '{t}: this creature fights another target creature'") chooses its targets when it's used.
+            foreach (var node in MTGRulesIR.Lowering.NodeWalker.Nodes(root, x => x is not Ability))
                 switch (node)
                 {
                     case ObjectSelector { Quantifier: Quantifier.Target } objects when Fresh(node, objects.Binding):

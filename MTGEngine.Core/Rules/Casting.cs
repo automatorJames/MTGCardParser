@@ -137,6 +137,17 @@ public sealed partial class Game
         // Cost changes are judged with the targets known ("costs {1} less if it targets a tapped creature", strive's "for each target beyond the first").
         var bySelector = TargetSlots.BySlot(slots, targets, targetCounts);
         var total = free || options.Contains("FaceDown") ? mana : CostToCast(obj, player, mana, bySelector);
+        // Strive and the like ("costs {2}{u} more for each target beyond the first"): more targets than can be paid
+        // for are let go, the last ones first, down to what each slot needs.
+        while (!free && !ManaPayment.CanPay(State, player, total, HasConvoke(card), new ManaPayment.Purpose(Spell: obj))
+            && Enumerable.Range(0, targetCounts.Count).LastOrDefault(i => targetCounts[i] > (slots[i].UpTo ? 0 : 1), -1) is var trim and >= 0)
+        {
+            var end = targetCounts.Take(trim + 1).Sum();
+            targets = targets.RemoveAt(end - 1);
+            targetCounts = targetCounts.SetItem(trim, targetCounts[trim] - 1);
+            bySelector = TargetSlots.BySlot(slots, targets, targetCounts);
+            total = CostToCast(obj, player, mana, bySelector);
+        }
         _lastSpent = ManaPool.Empty;
         if (!Pay(player, total, HasConvoke(card), new ManaPayment.Purpose(Spell: obj)))
             return;
