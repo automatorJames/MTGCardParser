@@ -148,6 +148,9 @@ public static class Quantities
                     return 0;
                 return extreme.Which == "Least" ? values.Min() : values.Max();
             }
+            // Converge: "the number of colors of mana spent to cast this spell".
+            case DistinctCount { Aspect: "Color" or "Colors", Among: ObjectSelector { Filter.Kinds: [{ Value: nameof(ObjectKind.ManaSpent) }] } }:
+                return Evaluate(new ColorsSpentToCast(), ctx);
             case DistinctCount distinct:
             {
                 var objects = Resolver.Objects(distinct.Among, ctx).Select(ctx.State.Object).Where(x => x is not null).ToList();

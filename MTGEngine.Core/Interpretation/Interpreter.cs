@@ -12,6 +12,10 @@ public static class Interpreter
         // Steps leave what they found under bindings ("the rest" after "put one of them into your hand"), so there's always somewhere to put it.
         if (ctx.Bindings is null)
             ctx = ctx with { Bindings = new Dictionary<string, ImmutableList<TargetRef>>() };
+        if (EachPlayersOwn(effect, ctx) is { } each)
+            return each;
+        if (EachUnnamedPlayer(effect, ctx) is { } unnamed)
+            return unnamed;
         var result = Run(effect, ctx);
         // "Sacrifice a creature. … damage equal to that creature's power": what a step chose (not a target, which is
         // known already) is what later references to its binding mean.
@@ -28,6 +32,50 @@ public static class Interpreter
                 result = result with { Rest = pool.Where(x => !taken.Contains(x)).ToImmutableList() };
         }
         return result;
+    }
+
+    /// <summary>
+    /// "Each player loses 1 life for each creature they control", "each opponent discards a card for each …": done by
+    /// each of the players in turn, with "they" meaning that player, when the amount counts something of theirs.
+    /// </summary>
+    static EffectContext EachPlayersOwn(Effect effect, EffectContext ctx)
+    {
+        if (effect is null or ForEachOf)
+            return null;
+        var type = effect.GetType();
+        if (type.GetProperty("Player") is not { CanWrite: true } player || player.GetValue(effect) is not PlayerSelector { Kind: PlayerKind.EachPlayer or PlayerKind.EachOpponent or PlayerKind.YourOpponents or PlayerKind.Players } each)
+            return null;
+        if (!new[] { "Amount", "Count" }.Any(name => type.GetProperty(name)?.GetValue(effect) is Quantity amount && MentionsThatPlayer(amount)))
+            return null;
+        var single = (Effect)type.GetMethod("<Clone>$")!.Invoke(effect, null);
+        player.SetValue(single, new PlayerSelector(PlayerKind.ThatPlayer));
+        foreach (var one in Resolver.Players(each, ctx).ToList())
+            Execute(single, ctx with { Last = [TargetRef.Of(one)] });
+        return ctx;
+    }
+
+    /// <summary>
+    /// "Each player returns a creature they control to its owner's hand", "each player exiles two cards from their
+    /// hand" lowered without their "each player": objects of a "they" / "their" no one is named for are each player's,
+    /// in turn.
+    /// </summary>
+    static EffectContext EachUnnamedPlayer(Effect effect, EffectContext ctx)
+    {
+        if (effect?.GetType().GetProperty("Objects")?.GetValue(effect) is not ObjectSelector { Filter: { } filter })
+            return null;
+        var owner = filter.Zone?.Owner;
+        var controller = filter.Controller?.Player;
+        if (!(owner is not null && MentionsThatPlayer(owner) || controller is not null && MentionsThatPlayer(controller)))
+            return null;
+        if (Resolver.Players(new PlayerSelector(PlayerKind.ThatPlayer), ctx).Count > 0)
+            return null;
+        List<TargetRef> affected = [];
+        foreach (var player in ctx.State.TurnOrderFrom(ctx.Controller).ToList())
+        {
+            var result = Execute(effect, ctx with { Last = [TargetRef.Of(player)] });
+            affected.AddRange(result.Affected ?? []);
+        }
+        return ctx with { Affected = affected.ToImmutableList(), Last = affected.ToImmutableList() };
     }
 
     /// <summary>Whether a quantity counts something of "that player" / "they" ("the number of lands they control").</summary>
@@ -148,7 +196,7 @@ public static class Interpreter
                         : portion.To is Reference { Text: "itself" or "themselves" or "himself" or "herself" } ? Resolver.Targets(portion.To, own)
                         : Resolver.Targets(portion.To, ctx);
                     // "Deals damage to each player equal to the number of lands they control": each player's own amount.
-                    if (damage.Divided is null && targets.Count > 1 && targets.All(x => x.IsPlayer) && MentionsThatPlayer(portion.Amount))
+                    if (damage.Divided is null && targets.Count >= 1 && targets.All(x => x.IsPlayer) && MentionsThatPlayer(portion.Amount))
                     {
                         foreach (var player in targets)
                             if (Quantities.Evaluate(portion.Amount, own with { Last = [player] }) is > 0 and var share)
@@ -577,19 +625,6 @@ public static class Interpreter
                     return Skipped(game, prevent, "prevent that damage", ctx);
                 game.CreateShields(prevent, ctx);
                 return ctx;
-
-            // "Each player returns all creature cards from their graveyard to their hand" lowered without its "each player":
-            // a "their" zone no one is named for is each player's, in turn.
-            case ChangeZone { Objects: ObjectSelector { Filter.Zone.Owner: PlayerSelector { Kind: PlayerKind.ThatPlayer } } } eachChange when Resolver.Players(new PlayerSelector(PlayerKind.ThatPlayer), ctx).Count == 0:
-            {
-                List<TargetRef> moved = [];
-                foreach (var player in state.TurnOrderFrom(ctx.Controller).ToList())
-                {
-                    var result = Execute(eachChange, ctx with { Last = [TargetRef.Of(player)] });
-                    moved.AddRange(result.Affected ?? []);
-                }
-                return ctx with { Affected = moved.ToImmutableList(), Last = moved.ToImmutableList() };
-            }
 
             case ChangeZone change:
             {

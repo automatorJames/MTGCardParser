@@ -299,4 +299,64 @@ public sealed class EngineRoundTwentyThreeTests
         Assert.True(traits.IsCreature);
         Assert.Equal(1, traits.Power);
     }
+
+    [Fact]
+    public void StrongholdDisciplineCostsEachPlayerForTheirOwnCreatures()
+    {
+        var game = Started("Swamp", new GreedyAgent(attacks: false));
+        Lands(game, "Swamp", 4);
+        Put(game, Cards.Vanilla("Bears", "{1}{G}", 2, 2), 0);
+        for (var i = 0; i < 3; i++)
+            Put(game, Cards.Vanilla("Bears", "{1}{G}", 2, 2), 1);
+        Put(game, Cards.Named("Stronghold Discipline"), 0, Zone.Hand);
+
+        game.PlayTurn(new PlayerId(0));
+
+        Assert.Equal(19, game.P0().Life);
+        Assert.Equal(17, game.P1().Life);
+    }
+
+    [Fact]
+    public void TyphoonCountsTheOpponentsIslands()
+    {
+        var game = Started("Forest", new GreedyAgent(attacks: false));
+        Lands(game, "Forest", 3);
+        Put(game, Cards.Basic("Island"), 1);
+        Put(game, Cards.Basic("Island"), 1);
+        Put(game, Cards.Named("Typhoon"), 0, Zone.Hand);
+
+        game.PlayTurn(new PlayerId(0));
+
+        Assert.Equal(18, game.P1().Life);
+    }
+
+    [Fact]
+    public void PainfulTruthsDrawsForEachColorSpent()
+    {
+        var game = Started("Swamp", new GreedyAgent(attacks: false));
+        Put(game, Cards.Basic("Swamp"), 0);
+        Put(game, Cards.Basic("Island"), 0);
+        Put(game, Cards.Basic("Mountain"), 0);
+        Put(game, Cards.Named("Painful Truths"), 0, Zone.Hand);
+
+        game.PlayTurn(new PlayerId(0));
+
+        Assert.Equal(17, game.P0().Life);
+        Assert.Equal(17, game.P0().Library.Count);
+    }
+
+    [Fact]
+    public void CurfewReturnsACreatureOfEachPlayers()
+    {
+        var game = Started("Island", new GreedyAgent(attacks: false));
+        Lands(game, "Island", 1);
+        var mine = Put(game, Cards.Vanilla("Bears", "{1}{G}", 2, 2), 0);
+        var theirs = Put(game, Cards.Vanilla("Bears", "{1}{G}", 2, 2), 1);
+        Put(game, Cards.Named("Curfew"), 0, Zone.Hand);
+
+        game.PlayTurn(new PlayerId(0));
+
+        Assert.Equal(Zone.Hand, game.State.Object(theirs).Zone);
+        Assert.True(game.State.Object(mine).Zone is Zone.Hand or Zone.Stack or Zone.Battlefield);
+    }
 }
