@@ -451,6 +451,8 @@ public static class InterpreterSupport
             GrantAbility => true,
             LoseAllAbilities => true,
             DoesntUntap { If: null } => true,
+            // Read with the ability before it, or as a condition on the static (CardDefinition.LastingUntaps).
+            DoesntUntap { If: Did { Effect: Remains { Objects: Self, State: "Tapped" or "OnTheBattlefield" } } or Controls { Objects: Self } or HasCountersCondition } => true,
             MustBlock { Duration: null } => true,
             BecomesAspect { Duration: null } => true,
             Animate { Duration: null, Transforms: false } => true,

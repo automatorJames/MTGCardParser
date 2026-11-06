@@ -266,7 +266,7 @@ public sealed partial class Game
         Characteristics.AbilitiesOf(State, obj).Any(x => x is StaticAbility { Effect: MayNotUntap { Objects: Self or null } });
 
     bool DoesntUntap(GameObject obj) =>
-        State.Temporary.Any(x => x.Target == obj.Id && x.DoesntUntap)
+        State.Temporary.Any(x => x.Target == obj.Id && x.DoesntUntap && x.ActiveIn(State))
         || Characteristics.StaticEffects(State).Any(x => x.Effect is DoesntUntap && Characteristics.Covers(State, x.Objects, x.Source, obj));
 
     void Cleanup()

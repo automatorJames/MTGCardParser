@@ -194,4 +194,23 @@ public sealed class EngineRoundTwentyTests
 
         Assert.Equal(flies, game.Log.OfType<TemporaryEffectAdded>().Any(x => x.Effect.Target == witch && x.Effect.Keywords.Contains("Flying")));
     }
+
+    [Fact]
+    public void AmberPrisonHoldsWhileItStaysTapped()
+    {
+        var game = Started("Plains", new GreedyAgent(attacks: false));
+        for (var i = 0; i < 4; i++)
+            Put(game, Cards.Basic("Plains"), 0);
+        var prison = Put(game, Cards.Named("Amber Prison"), 0);
+        var bears = Put(game, Cards.Vanilla("Bears", "{1}{G}", 2, 2), 1);
+
+        game.PlayTurn(new PlayerId(0));
+        Assert.True(game.State.Object(bears).Tapped);
+        game.PlayTurn(new PlayerId(1));
+        Assert.True(game.State.Object(bears).Tapped);
+
+        game.Emit(new Untapped(prison));
+        game.PlayTurn(new PlayerId(1));
+        Assert.False(game.State.Object(bears).Tapped);
+    }
 }

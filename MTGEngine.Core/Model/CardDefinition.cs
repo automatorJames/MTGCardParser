@@ -29,7 +29,7 @@ public sealed record CardDefinition(
         var cost = ManaCost.Parse(info.ManaCost);
         var spell = rules.Types?.Contains("Instant") == true || rules.Types?.Contains("Sorcery") == true;
         // On an instant or sorcery, "if that creature would die this turn, exile it instead" is set up as the spell resolves.
-        var abilities = InsteadRewrite.Rewrite(Modal.Rewrite(rules.Lines.SelectMany(WithoutCastingReminders).Select(Unwrap)
+        var abilities = InsteadRewrite.Rewrite(Modal.Rewrite(LastingUntaps(rules.Lines.SelectMany(WithoutCastingReminders).Select(Unwrap))
             .Select(x => spell && x is ReplacementAbility { Effect: Replacement replacement } ? new SpellAbility(replacement) : x)
             .Select(x => spell ? x : AsStatic(x)))).ToImmutableList();
         abilities = Levels.Rewrite(KeywordAbilities.Expand(abilities, spell)).ToImmutableList();
@@ -151,6 +151,45 @@ public sealed record CardDefinition(
             Conditional { If: var holds, Then: AlternativeCostOffer { Alternative: { Replaces: "ThisSpellsManaCost", If: null } alternative }, Else: null } => alternative with { If = holds },
             _ => null,
         };
+    }
+
+    /// <summary>
+    /// "Tap target creature. That creature doesn't untap during its controller's untap step for as long as this artifact
+    /// remains tapped": the lowering gives the second sentence as a static of its own; it's part of the ability before
+    /// it, lasting while its condition holds. "This land doesn't untap during your untap step if it has a depletion
+    /// counter on it" is a static under that condition.
+    /// </summary>
+    static IEnumerable<Ability> LastingUntaps(IEnumerable<Ability> abilities)
+    {
+        Ability previous = null;
+        foreach (var ability in abilities)
+        {
+            if (ability is StaticAbility { Effect: DoesntUntap { If: { } condition } doesnt } statics)
+            {
+                if (previous is ActivatedAbility or TriggeredAbility && condition is Did { Effect: Remains { Objects: Self } } or Controls { Objects: Self })
+                {
+                    previous = previous switch
+                    {
+                        ActivatedAbility activated => activated with { Effect = new Sequence([activated.Effect, doesnt]) },
+                        TriggeredAbility triggered => triggered with { Effect = new Sequence([triggered.Effect, doesnt]) },
+                        _ => previous,
+                    };
+                    continue;
+                }
+                if (condition is not (Did or Controls))
+                {
+                    if (previous is not null)
+                        yield return previous;
+                    previous = new StaticAbility(doesnt with { If = null }, statics.While is null ? condition : new And([statics.While, condition]));
+                    continue;
+                }
+            }
+            if (previous is not null)
+                yield return previous;
+            previous = ability;
+        }
+        if (previous is not null)
+            yield return previous;
     }
 
     /// <summary>A permanent's effect line that states a continuous effect, as the static ability it is: "this creature attacks each combat if able", "as long as …, it gets +1/+1".</summary>

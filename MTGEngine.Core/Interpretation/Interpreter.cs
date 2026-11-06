@@ -1084,8 +1084,19 @@ public static class Interpreter
             case DoesntUntap doesnt:
             {
                 var objects = Resolver.Objects(doesnt.Objects, ctx);
+                var source = ctx.Source is { } held ? state.Object(held) : null;
                 foreach (var id in objects)
-                    game.Emit(new TemporaryEffectAdded(Hold(new TemporaryEffect(id, 0, 0, [], state.Turn + 1, DoesntUntap: true), effect, ctx)));
+                {
+                    // "For as long as this artifact remains tapped / on the battlefield", "for as long as you control this creature".
+                    var lasting = doesnt.If switch
+                    {
+                        Did { Effect: Remains { State: "Tapped" } } => new TemporaryEffect(id, 0, 0, [], null, DoesntUntap: true, While: new ObjectIs(new Self(), [new Term("Tapped", "TapState")]), WhileSource: ctx.Source, WhileController: ctx.Controller, WhileSourceZoneChanges: source?.ZoneChangeCount ?? -1),
+                        Did { Effect: Remains } => new TemporaryEffect(id, 0, 0, [], null, DoesntUntap: true, WhileSource: ctx.Source, WhileController: ctx.Controller, WhileSourceZoneChanges: source?.ZoneChangeCount ?? -1),
+                        Controls control => new TemporaryEffect(id, 0, 0, [], null, DoesntUntap: true, While: control, WhileSource: ctx.Source, WhileController: ctx.Controller),
+                        _ => null,
+                    };
+                    game.Emit(new TemporaryEffectAdded(lasting ?? Hold(new TemporaryEffect(id, 0, 0, [], state.Turn + 1, DoesntUntap: true), effect, ctx)));
+                }
                 return ctx;
             }
 
