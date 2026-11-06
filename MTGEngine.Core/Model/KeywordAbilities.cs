@@ -408,6 +408,13 @@ public static class KeywordAbilities
             KeywordCost { Keyword: { Keyword: "Blight", Amount: Fixed { Value: var blight } } } =>
                 new ActionCost(new PutCounters(new ObjectSelector(Quantifier.Any, new ObjectFilter(Kinds: [new Term("Creature", "CardType")], Controller: new Controlled(You))), new CounterSpec("-1/-1", new Fixed(blight)))),
             KeywordCost { Keyword: { Keyword: "CollectEvidence", Amount: Fixed { Value: var evidence } } } => new ActionCost(new CollectEvidence(evidence)),
+            // Waterbend {n}: paid in mana (tapping artifacts and creatures to help pay isn't offered yet, a narrower but legal payment).
+            KeywordCost { Keyword: { Keyword: "Waterbend", Cost: PayMana waterbend } } => waterbend,
+            // Forage: exile three cards from your graveyard or sacrifice a Food.
+            KeywordCost { Keyword.Keyword: "Forage" } => new ActionCost(new ChoiceOf([
+                new Exile(new ObjectSelector(Quantifier.Count, new ObjectFilter(Kinds: [new Term(nameof(ObjectKind.Card), nameof(ObjectKind))], Zone: new ZoneRef(nameof(Zone.Graveyard), You)), new Fixed(3))),
+                new Sacrifice(You, new ObjectSelector(Quantifier.Any, new ObjectFilter(Kinds: [new Term("Food", "ArtifactType")], Controller: new Controlled(You)))),
+            ])),
             _ => cost,
         };
 
