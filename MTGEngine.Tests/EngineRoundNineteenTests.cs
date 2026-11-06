@@ -178,4 +178,19 @@ public sealed class EngineRoundNineteenTests
         Assert.Equal(Zone.Battlefield, game.State.Object(rollicker).Zone);
         Assert.True(Characteristics.Of(game.State, game.State.Object(rollicker)).IsCreature);
     }
+
+    [Fact]
+    public void BlustersquallOverloadedTapsEachCreature()
+    {
+        var game = Started("Island", new AlternativeAgent());
+        Lands(game, "Island", 4);
+        var first = Put(game, Cards.Vanilla("Bears", "{1}{G}", 2, 2), 1);
+        var second = Put(game, Cards.Vanilla("Elk", "{1}", 1, 1), 1);
+        Put(game, Cards.Named("Blustersquall"), 0, Zone.Hand);
+
+        game.PlayTurn(new PlayerId(0));
+
+        Assert.True(game.State.Object(first).Tapped);
+        Assert.True(game.State.Object(second).Tapped);
+    }
 }

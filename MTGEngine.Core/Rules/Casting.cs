@@ -99,6 +99,8 @@ public sealed partial class Game
             {
                 if (Specialize(spellEffect, options) is not { } specialized)
                     continue;
+                if (options.Contains("Overloaded"))
+                    specialized = Overloaded(specialized);
                 // Entwine: all the modes for an extra cost, if it can be paid on top of what's due.
                 var entwine = OptionalCosts(card, "Entwine").FirstOrDefault();
                 var entwinable = entwine is not null && ManaPayment.CanPay(State, player, CostToCast(obj, player, mana.Plus(entwine), null), HasConvoke(card), new ManaPayment.Purpose(Spell: obj)) ? entwine : null;

@@ -28,12 +28,19 @@ public sealed partial class Game
     /// <summary>The alternative index that marks casting for a bestow cost.</summary>
     const int BestowCast = -14;
 
+    /// <summary>The alternative index that marks casting for an overload cost.</summary>
+    const int OverloadCast = -15;
+
+    /// <summary>An overloaded spell's effect: each "target" is "each".</summary>
+    static Effect Overloaded(Effect effect) =>
+        (Effect)MTGRulesIR.Lowering.SelfReferenceRepair.Rewrite(effect, node => node is ObjectSelector { Quantifier: Quantifier.Target } target ? target with { Quantifier = Quantifier.All, UpTo = false, Count = null } : node);
+
     /// <summary>A bestowed spell's target: a creature it will enchant.</summary>
     static readonly TargetSlot _bestowSlot = new(new ObjectSelector(Quantifier.Target, new ObjectFilter(Kinds: [new Term("Creature", "CardType")])), null, false, 1);
 
     /// <summary>The casting keywords that replace the mana cost when cast from the hand, with their indices and the option a spell cast that way records.</summary>
     static readonly (string Keyword, int Index, string Option)[] _keywordCasts =
-        [("Evoke", EvokeCast, "Evoked"), ("Dash", DashCast, "Dashed"), ("Warp", WarpCast, "Warped"), ("Awaken", AwakenCast, "Awakened"), ("Bestow", BestowCast, "Bestowed")];
+        [("Evoke", EvokeCast, "Evoked"), ("Dash", DashCast, "Dashed"), ("Warp", WarpCast, "Warped"), ("Awaken", AwakenCast, "Awakened"), ("Bestow", BestowCast, "Bestowed"), ("Overload", OverloadCast, "Overloaded")];
 
     /// <summary>Exiles a warped permanent at the end step; its owner may cast it from exile on a later turn.</summary>
     public void ExileForLater(ObjectId id)
@@ -85,6 +92,15 @@ public sealed partial class Game
         if (loser == active || State.Player(active) is not { Speed: > 0 and < 4 } racer || racer.SpeedRaisedOnTurn == State.Turn || !HasEngines(active))
             return;
         Emit(new SpeedChanged(active, racer.Speed + 1, State.Turn));
+    }
+
+    /// <summary>Casts <paramref name="id"/> without paying its mana cost, wherever it is (discover, cascade); false when it can't be cast (no legal targets, a land).</summary>
+    public bool CastFree(ObjectId id, PlayerId player)
+    {
+        if (State.Object(id) is not { } obj || obj.Card.IsLand || !TargetsAvailable(SpellSlots(obj.Card), player, id))
+            return false;
+        Cast(id, player, 0, free: true);
+        return State.Object(id)?.Zone == Zone.Stack;
     }
 
     static Cost PlotCost(CardDefinition card) => KeywordCost(card, "Plot");

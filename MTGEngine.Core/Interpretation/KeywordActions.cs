@@ -3,7 +3,7 @@ namespace MTGEngine.Core;
 /// <summary>Keyword actions as effects: scry, surveil, investigate, bolster, proliferate, explore, adapt, monstrosity, populate.</summary>
 public static class KeywordActions
 {
-    public static readonly HashSet<string> Supported = ["Scry", "Surveil", "Investigate", "Bolster", "Proliferate", "Explore", "Adapt", "Monstrosity", "Populate", "Fateseal", "Connive", "Learn"];
+    public static readonly HashSet<string> Supported = ["Scry", "Surveil", "Investigate", "Bolster", "Proliferate", "Explore", "Adapt", "Monstrosity", "Populate", "Fateseal", "Connive", "Learn", "Clash", "Discover"];
 
     public static EffectContext Execute(KeywordAction action, EffectContext ctx)
     {
@@ -88,6 +88,53 @@ public static class KeywordActions
                 {
                     foreach (var opponent in ctx.State.OpponentsOf(ctx.Controller).ToList())
                         Scry(game, opponent, amount, toGraveyard: false, chooser: ctx.Controller);
+                    break;
+                }
+                // Clash: each clashing player reveals their top card and may put it on the bottom; you win with the greater mana value.
+                case "Clash":
+                {
+                    var opponents = ctx.State.OpponentsOf(ctx.Controller).ToList();
+                    if (opponents.Count == 0)
+                        break;
+                    var opponent = opponents.Count == 1 ? opponents[0] : opponents[Math.Clamp(game.Decide(new ChooseOne(ctx.Controller, "Clash with", opponents.Select(x => x.ToString()).ToImmutableList())).Index, 0, opponents.Count - 1)];
+                    int Reveal(PlayerId player)
+                    {
+                        if (ctx.State.Player(player).Library is not [var top, ..])
+                            return -1;
+                        var card = ctx.State.Object(top);
+                        if (game.Decide(new YesNo(player, $"Clash: put {card.Card.Name} on the bottom of your library?")).Yes)
+                            game.MoveToZone(top, Zone.Library, position: int.MaxValue);
+                        return card.Card.ManaCost.ManaValue;
+                    }
+                    var mine = Reveal(ctx.Controller);
+                    var theirs = Reveal(opponent);
+                    game.WonLastFlip = mine > theirs;
+                    game.LastOptionalTaken = game.WonLastFlip;
+                    break;
+                }
+                // Discover N: exile from the top until a nonland card with mana value N or less; cast it free or put it into
+                // your hand; the rest go on the bottom in a random order.
+                case "Discover":
+                {
+                    List<ObjectId> exiled = [];
+                    ObjectId? found = null;
+                    while (ctx.State.Player(ctx.Controller).Library is [var top, ..])
+                    {
+                        game.MoveToZone(top, Zone.Exile);
+                        if (ctx.State.Object(top) is { } card && !card.Card.IsLand && card.Card.ManaCost.ManaValue <= amount)
+                        {
+                            found = top;
+                            break;
+                        }
+                        exiled.Add(top);
+                    }
+                    if (found is { } discovered)
+                    {
+                        if (!(game.Decide(new YesNo(ctx.Controller, $"Discover: cast {ctx.State.Object(discovered).Card.Name} without paying its mana cost?")).Yes && game.CastFree(discovered, ctx.Controller)))
+                            game.MoveToZone(discovered, Zone.Hand);
+                    }
+                    foreach (var id in exiled.OrderBy(_ => game.Rng.Next()).ToList())
+                        game.MoveToZone(id, Zone.Library, position: int.MaxValue);
                     break;
                 }
                 // Learn: there's no sideboard to get a lesson from, so it's "you may discard a card. if you do, draw a card".

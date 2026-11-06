@@ -64,7 +64,7 @@ public static class SelfReferenceRepair
         };
 
     /// <summary>The tree with <paramref name="fix"/> applied bottom-up; nodes whose children didn't change are kept as they are.</summary>
-    static IrNode Rewrite(IrNode node, Func<IrNode, IrNode> fix)
+    public static IrNode Rewrite(IrNode node, Func<IrNode, IrNode> fix)
     {
         if (node is null)
             return null;

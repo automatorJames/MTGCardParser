@@ -132,4 +132,30 @@ public sealed class EngineRoundTwentyTests
         Assert.Equal(2, traits.Power);
         Assert.False(traits.HasKeyword("Flying"));
     }
+
+    [Fact]
+    public void PrimordialGnawerDiscoversAndCastsFree()
+    {
+        var deck = Cards.DeckOf("A", (Cards.Basic("Mountain"), 2), (Cards.Named("Shock"), 1), (Cards.Basic("Mountain"), 17));
+        var game = GameExtensions.Started(deck, Cards.DeckOf("B", (Cards.Basic("Plains"), 20)), new GreedyAgent(attacks: false), new PassiveAgent(), 0);
+        var gnawer = Put(game, Cards.Named("Primordial Gnawer"), 0);
+
+        game.MoveToZone(gnawer, Zone.Graveyard);
+        game.PlayTurn(new PlayerId(0));
+
+        Assert.Equal(18, game.P1().Life);
+        Assert.Equal(19, game.P0().Library.Count);
+    }
+
+    [Fact]
+    public void AdderStaffBoggartWinsAClash()
+    {
+        var deck = Cards.DeckOf("A", (Cards.Vanilla("Colossus", "{5}", 5, 5), 20));
+        var game = GameExtensions.Started(deck, Cards.DeckOf("B", (Cards.Basic("Plains"), 20)), new PassiveAgent(), new PassiveAgent(), 0);
+        var boggart = Put(game, Cards.Named("Adder-Staff Boggart"), 0);
+
+        game.PlayTurn(new PlayerId(0));
+
+        Assert.Equal(1, game.State.Object(boggart).CountersOf("+1/+1"));
+    }
 }
