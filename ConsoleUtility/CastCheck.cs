@@ -31,7 +31,7 @@ static class CastCheck
             .Where(x => !x.IsLand && x.Types.Count > 0)
             .ToList();
 
-        List<string> offeredNotCast = [], threw = [], notOffered = [];
+        List<string> offeredNotCast = [], threw = [], notOffered = [], skipped = [];
         var cast = 0;
         var clock = System.Diagnostics.Stopwatch.StartNew();
         List<string> slow = [];
@@ -87,7 +87,16 @@ static class CastCheck
                 if (game.Log.Skip(before).OfType<SpellCast>().Any(x => x.Item.Spell == id) || game.State.Object(id)?.Zone != Zone.Hand)
                     cast++;
                 else
+                {
                     offeredNotCast.Add($"{card.Name} ({offer})");
+                    continue;
+                }
+                // What resolving it (and what it triggers) skipped at run time.
+                var resolving = game.Log.Count;
+                game.ResolveStack();
+                var skips = game.Log.Skip(resolving).OfType<EffectSkipped>().Select(x => $"{x.Kind}: {x.Why}").Distinct().ToList();
+                if (skips.Count > 0)
+                    skipped.Add($"{card.Name}: {string.Join("; ", skips)}");
             }
             catch (Exception ex)
             {
@@ -105,7 +114,7 @@ static class CastCheck
 
         var lines = new List<string>
         {
-            $"{cards.Count:N0} executable nonland cards: {cast:N0} cast, {offeredNotCast.Count:N0} offered but not cast, {threw.Count:N0} threw, {notOffered.Count:N0} not offered",
+            $"{cards.Count:N0} executable nonland cards: {cast:N0} cast, {offeredNotCast.Count:N0} offered but not cast, {skipped.Count:N0} skipped something as they resolved, {threw.Count:N0} threw, {notOffered.Count:N0} not offered",
             "",
             "Offered but not cast:",
         };
@@ -113,6 +122,9 @@ static class CastCheck
         lines.Add("");
         lines.Add("Threw:");
         lines.AddRange(threw.Select(x => "  " + x));
+        lines.Add("");
+        lines.Add("Skipped as it resolved:");
+        lines.AddRange(skipped.Select(x => "  " + x));
         lines.Add("");
         lines.Add("Slow (over a second):");
         lines.AddRange(slow.Select(x => "  " + x));

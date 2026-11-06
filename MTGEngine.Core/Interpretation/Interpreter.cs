@@ -68,18 +68,36 @@ public static class Interpreter
             case DealDamage damage:
             {
                 var sources = damage.Source is null ? (ctx.Source is { } s ? [s] : []) : Resolver.Objects(damage.Source, ctx);
-                var source = sources.Count > 0 ? sources[0] : ctx.Source;
                 var total = 0;
                 List<TargetRef> hit = [];
+                // "Each creature deals damage to itself equal to its power", "up to two target creatures each deal damage
+                // equal to their power": each source deals its own, with "its" and "itself" meaning that source.
+                var each = damage.Source is not (null or Self) && sources.Count > 0;
+                // "Up to two target creatures each deal damage …" with none chosen deals none.
+                if (damage.Source is not (null or Self) && sources.Count == 0)
+                    return ctx;
+                foreach (var source in each ? sources.Select(x => (ObjectId?)x) : [sources.Count > 0 ? sources[0] : ctx.Source])
                 foreach (var portion in damage.Portions)
                 {
-                    var amount = Quantities.Evaluate(portion.Amount, ctx);
+                    var own = ctx;
+                    if (each && source is { } dealer)
+                    {
+                        var bindings = new Dictionary<string, ImmutableList<TargetRef>>(ctx.Bindings ?? []);
+                        if (damage.Source is ObjectSelector { Binding: { } binding })
+                            bindings[binding] = [TargetRef.Of(dealer)];
+                        if (damage.Source is Reference { Binding: { } referenced })
+                            bindings[referenced] = [TargetRef.Of(dealer)];
+                        own = ctx with { Last = [TargetRef.Of(dealer)], Bindings = bindings };
+                    }
+                    var amount = Quantities.Evaluate(portion.Amount, own);
                     if (amount is null)
                     {
                         game.Skip(portion.Amount, "amount not evaluable");
                         continue;
                     }
-                    var targets = portion.To is null ? (ctx.TriggerSubject is { } subject ? [subject] : ctx.Last ?? []) : Resolver.Targets(portion.To, ctx);
+                    var targets = portion.To is null ? (ctx.TriggerSubject is { } subject ? [subject] : ctx.Last ?? [])
+                        : portion.To is Reference { Text: "itself" or "themselves" or "himself" or "herself" } ? Resolver.Targets(portion.To, own)
+                        : Resolver.Targets(portion.To, ctx);
                     // "Divided as you choose among one, two, or three targets": as evenly as it goes, the first ones getting the remainder.
                     var shares = damage.Divided is not null && targets.Count > 0
                         ? targets.Select((_, n) => amount.Value / targets.Count + (n < amount.Value % targets.Count ? 1 : 0)).ToList()
@@ -872,7 +890,7 @@ public static class Interpreter
             {
                 var player = play.Player is null ? ctx.Controller : Resolver.Players(play.Player, ctx).FirstOrDefault(ctx.Controller);
                 var cards = play.Card is Self ? (ctx.Source is { } own ? [own] : []) : Resolver.Objects(play.Card, ctx);
-                if (UntilTurn(play.Duration, state) is null)
+                if (UntilTurn(play.Duration, state, player) is null)
                     return Skipped(game, play, "play duration", ctx);
                 game.GrantPlay(play, cards, player, ctx);
                 return ctx;
@@ -1259,10 +1277,12 @@ public static class Interpreter
     }
 
     /// <summary>The turn after which a duration ends: this turn for "until end of turn", -1 for no end, null for one the engine doesn't keep.</summary>
-    public static int? UntilTurn(Duration duration, GameState state) =>
+    public static int? UntilTurn(Duration duration, GameState state, PlayerId? you = null) =>
         duration switch
         {
             null => -1,
+            // "Until the end of your next turn": the next turn that's yours (the lowering marks it as the end of your turn).
+            UntilPhase { Phase: { Phase: "Turn", Part: "End", Whose: PlayerSelector { Kind: PlayerKind.You } } } => NextTurnOf(state, you ?? state.ActivePlayer),
             ThisTurn => state.Turn,
             UntilPhase { Phase.Phase: "EndOfTurn" or "EndStep" or "Cleanup" or "End" } => state.Turn,
             UntilPhase { Phase.Phase: "Turn", Phase.Next: true } => state.Turn + 1,
@@ -1270,6 +1290,14 @@ public static class Interpreter
             While or UntilThisLeaves => -1,
             _ => null,
         };
+
+    /// <summary>The number of <paramref name="player"/>'s next turn after this one, in turn order.</summary>
+    static int NextTurnOf(GameState state, PlayerId player)
+    {
+        var order = state.TurnOrderFrom(state.ActivePlayer).ToList();
+        var at = order.IndexOf(player);
+        return state.Turn + (at <= 0 ? order.Count : at);
+    }
 
     /// <summary>An effect with a duration given by the words around it ("until end of turn, …", "… for as long as …"): set on any effect that has an unset one.</summary>
     static Effect WithDuration(Effect effect, Duration duration)

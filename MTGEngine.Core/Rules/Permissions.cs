@@ -42,7 +42,7 @@ public sealed partial class Game
             return;
         }
 
-        var until = Interpreter.UntilTurn(play.Duration, State);
+        var until = Interpreter.UntilTurn(play.Duration, State, player);
         var expires = until is null or -1 ? State.Turn : until;
         foreach (var id in cards)
             if (State.Object(id) is { } obj && obj.Zone is not (Zone.Battlefield or Zone.Stack))

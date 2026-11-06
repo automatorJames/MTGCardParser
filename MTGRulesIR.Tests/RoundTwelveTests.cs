@@ -107,4 +107,14 @@ public sealed class RoundTwelveTests(GrammarFixture fixture)
         var target = Assert.Single(MTGRulesIR.Lowering.NodeWalker.Nodes(ability).OfType<ObjectSelector>(), x => x.Quantifier == Quantifier.Target);
         Assert.Equal(PlayerKind.EachPlayer, Assert.IsType<PlayerSelector>(target.Filter.Zone.Owner).Kind);
     }
+
+    [Fact]
+    public void ItsInTheConditionIsTheTarget()
+    {
+        var ability = fixture.LowerAbility("destroy target nonblack creature if its toughness is less than or equal to the number of cards in your graveyard.");
+
+        var target = Assert.Single(MTGRulesIR.Lowering.NodeWalker.Nodes(ability).OfType<ObjectSelector>(), x => x.Quantifier == Quantifier.Target);
+        var its = Assert.IsType<Reference>(Assert.Single(MTGRulesIR.Lowering.NodeWalker.Nodes(ability).OfType<CharacteristicOf>()).Of);
+        Assert.Equal(target.Binding, its.Binding);
+    }
 }

@@ -3,6 +3,9 @@ namespace MTGEngine.Core;
 /// <summary>Quantities as numbers in the game now; null when the engine can't evaluate one.</summary>
 public static class Quantities
 {
+    static readonly ImmutableHashSet<string> _basicLandTypes = ["Plains", "Island", "Swamp", "Mountain", "Forest"];
+    static readonly ImmutableHashSet<string> _permanentTypes = ["Artifact", "Battle", "Creature", "Enchantment", "Land", "Planeswalker"];
+
     static readonly string[] _partyRoles = ["Cleric", "Rogue", "Warrior", "Wizard"];
 
     /// <summary>The most party roles the creatures can fill, each creature filling one.</summary>
@@ -152,6 +155,10 @@ public static class Quantities
                     "CardType" or "CardTypes" => objects.SelectMany(x => Characteristics.Of(ctx.State, x).Types).Distinct().Count(),
                     "CreatureType" or "CreatureTypes" => objects.SelectMany(x => Characteristics.Of(ctx.State, x).Subtypes).Distinct().Count(),
                     "Name" or "Names" => objects.Select(x => x.Card.Name).Distinct().Count(),
+                    // Domain: Plains, Island, Swamp, Mountain and Forest among them.
+                    "BasicLandTypes" or "BasicLandType" => objects.SelectMany(x => Characteristics.Of(ctx.State, x).Subtypes).Where(_basicLandTypes.Contains).Distinct().Count(),
+                    "ManaValues" or "ManaValue" => objects.Select(x => x.Card.ManaCost.ManaValue).Distinct().Count(),
+                    "PermanentTypes" => objects.SelectMany(x => Characteristics.Of(ctx.State, x).Types).Where(_permanentTypes.Contains).Distinct().Count(),
                     _ => null,
                 };
             }

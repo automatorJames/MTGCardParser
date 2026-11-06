@@ -1013,6 +1013,19 @@ public sealed partial class Game
     /// <summary>The mana the last payment spent, for "if {u} was spent to cast it".</summary>
     ManaPool _lastSpent = ManaPool.Empty;
 
+    /// <summary>Resolves the stack to empty, checking state-based actions and triggers between items (for tools that set a game up by hand); false if it didn't empty within <paramref name="limit"/> items.</summary>
+    public bool ResolveStack(int limit = 50)
+    {
+        for (var i = 0; i < limit; i++)
+        {
+            CheckStateAndTriggers();
+            if (State.Stack.Count == 0)
+                return true;
+            ResolveTop();
+        }
+        return State.Stack.Count == 0;
+    }
+
     void ResolveTop()
     {
         var item = State.Stack[^1];

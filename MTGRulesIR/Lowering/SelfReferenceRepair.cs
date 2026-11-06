@@ -27,6 +27,9 @@ public static class SelfReferenceRepair
             // "You may have target creature block it this turn if able": "it" is this creature, not the blocker.
             MustBlock { Blockers: ObjectSelector { Binding: { } blockers }, Attacker: Reference { Binding: var it } } must when it == blockers => must with { Attacker = new Self() },
             Sequence sequence when Repaired(sequence.Steps) is { } steps => new Sequence(steps),
+            // "Destroy target creature if its toughness is 2 or less": "its" is the target the effect names.
+            Conditional { If: { } condition, Then: { } then } conditional when TargetOf(then) is { } target && Unbound(condition) =>
+                conditional with { If = (Condition)Rewrite(condition, x => x is CharacteristicOf { Of: Reference { Binding: null, Text: "its" or "it" or "it's" } it } of ? of with { Of = it with { Binding = target } } : x) },
             _ => node,
         };
 
@@ -64,6 +67,17 @@ public static class SelfReferenceRepair
         }
         return repaired;
     }
+
+    /// <summary>The binding of the one target an effect names; null when it names none or several.</summary>
+    static string TargetOf(Effect effect)
+    {
+        var bindings = NodeWalker.Nodes(effect).OfType<ObjectSelector>().Where(x => x.Quantifier == Quantifier.Target).Select(x => x.Binding).Distinct().ToList();
+        return bindings is [{ } only] ? only : null;
+    }
+
+    /// <summary>Whether the condition reads a characteristic of an unbound "its" ("if its toughness is 2 or less").</summary>
+    static bool Unbound(Condition condition) =>
+        NodeWalker.Nodes(condition).OfType<CharacteristicOf>().Any(x => x.Of is Reference { Binding: null, Text: "its" or "it" or "it's" });
 
     /// <summary><paramref name="step"/> acting on <paramref name="objects"/> where it acted on this object; null when it doesn't.</summary>
     static Effect WithObjects(Effect step, Selector objects)

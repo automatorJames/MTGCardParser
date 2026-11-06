@@ -343,6 +343,7 @@ public static class InterpreterSupport
             RevealUntil { Until: not PlayerAction { What: ObjectSelector } } => "RevealUntil.Until",
             CantPlay { Verb: not ("Cast" or "Play") } cantPlay => $"CantPlay.{cantPlay.Verb}",
             CopySpell { Except: not null } => "CopySpell.Except",
+            DistinctCount { Aspect: not ("Color" or "Colors" or "CardType" or "CardTypes" or "CreatureType" or "CreatureTypes" or "Name" or "Names" or "BasicLandTypes" or "BasicLandType" or "ManaValues" or "ManaValue" or "PermanentTypes") } distinct => $"DistinctCount.{distinct.Aspect}",
             DistributeCounters { Targeted: false } or DistributeCounters { Among: not ObjectSelector } => "DistributeCounters.Untargeted",
             ExtraLandPlays { EachTurn: false } oneTurn when !(oneTurn.Duration is null or ThisTurn && oneTurn.Count is Fixed) => "ExtraLandPlays.Duration",
             ExtraLandPlays { EachTurn: true, Count: not (Fixed or Special { Kind: "AnyNumber" }) } => "ExtraLandPlays.Count",
