@@ -139,7 +139,7 @@ public static class InterpreterSupport
 
     static readonly HashSet<Type> _predicates =
     [
-        typeof(HasKeywords), typeof(HasStats), typeof(CharacteristicBound), typeof(CharacteristicCompared), typeof(HasExtreme), typeof(Distinct), typeof(Related), typeof(ActedOn), typeof(QualifierChoice), typeof(QualifiedKind),
+        typeof(HasKeywords), typeof(HasStats), typeof(CharacteristicBound), typeof(CharacteristicCompared), typeof(HasExtreme), typeof(Distinct), typeof(Related), typeof(ActedOn), typeof(CastFrom), typeof(QualifierChoice), typeof(QualifiedKind),
         typeof(CastBy), typeof(WithCounters), typeof(Satisfying), typeof(ChosenBy), typeof(OfChosen), typeof(Targeting), typeof(SharesCharacteristic), typeof(Named), typeof(InCombatWith),
     ];
 
@@ -169,7 +169,7 @@ public static class InterpreterSupport
     [
         "CardType", "CreatureType", "LandType", "PermanentSubtype", "PlaneswalkerType", "ArtifactType", "EnchantmentType", "Supertype", "ManaColor",
         "ColorCount", "Colorfulness", "TapState", "CombatState", nameof(ObjectKind), "Distinction", "Keyword", "AttachedBy", "Kind", "Position", "Provenance", "TokenWord", "CounterKind", "CardGroup", "CountSuffix", "Manner", "AbilitiesWord",
-        "LeftoverCards", "AffectedThisWay", "DamageHistory", "ThisWayAction", "SpellOrdinal", "SpellCountPeriod", "AbilityCategory",
+        "LeftoverCards", "AffectedThisWay", "DamageHistory", "ThisWayAction", "CastFrom", "SpellOrdinal", "SpellCountPeriod", "AbilityCategory",
     ];
 
     static readonly HashSet<string> _kindVocabularies =

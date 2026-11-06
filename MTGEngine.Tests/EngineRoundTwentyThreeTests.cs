@@ -634,4 +634,17 @@ public sealed class EngineRoundTwentyThreeTests
         Assert.Equal(18, game.P1().Life);
         Assert.Equal(19, game.P0().Library.Count);
     }
+
+    [Fact]
+    public void BurningVengeanceTriggersOnSpellsCastFromTheGraveyard()
+    {
+        var game = Started("Island", new GreedyAgent(attacks: false));
+        Lands(game, "Island", 3);
+        Put(game, Cards.Named("Burning Vengeance"), 0);
+        Put(game, Cards.Named("Think Twice"), 0, Zone.Graveyard);
+
+        game.PlayTurn(new PlayerId(0));
+
+        Assert.Equal(18, game.P1().Life);
+    }
 }

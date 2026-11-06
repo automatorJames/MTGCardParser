@@ -219,6 +219,7 @@ public static class Filters
             "CounterKind" => true,
             "PermanentDesignation" => Designated(state, obj, qualifier.Quality),
             // Leftovers and "… this way" name a pool the resolver supplies; within it they hold.
+            "CastFrom" => CastFrom(obj, qualifier.Quality),
             // "Each creature dealt damage this turn".
             "DamageHistory" when qualifier.Quality == "DealtDamageThisTurn" => state is null || state.ThisTurnEventList.OfType<DamageDealt>().Any(x => x.Target.IsObject && x.Target.Object == obj.Id),
             "LeftoverCards" or "AffectedThisWay" or "DamageHistory" or "ThisWayAction" => true,
@@ -240,6 +241,29 @@ public static class Filters
             return true;
         var owners = ctx is not null ? Resolver.Players(zone.Owner, ctx) : Resolver.Players(state, zone.Owner, you, null);
         return owners.Contains(wanted == Zone.Battlefield ? obj.Controller : obj.Owner);
+    }
+
+    /// <summary>
+    /// "A spell cast from your hand", "spells cast from graveyards", "cast from anywhere other than your hand": for a
+    /// spell or the permanent it became, where it was cast from; for a card elsewhere, that it's in that zone.
+    /// </summary>
+    static bool CastFrom(GameObject obj, string zones)
+    {
+        if (zones is null)
+            return false;
+        var cast = obj.Zone is Zone.Stack or Zone.Battlefield;
+        bool From(string zone) => cast ? obj.WasCastWith("From" + zone) : obj.Zone.ToString() == zone;
+        return zones switch
+        {
+            "Hand" => From("Hand"),
+            "Graveyard" or "Graveyards" => From("Graveyard"),
+            "Exile" => From("Exile"),
+            "Library" or "Libraries" => From("Library"),
+            "GraveyardsOrExile" => From("Graveyard") || From("Exile"),
+            "GraveyardsOrLibraries" => From("Graveyard") || From("Library"),
+            "AnywhereButHand" => cast && obj.WasCastWith("Cast") && !From("Hand"),
+            _ => false,
+        };
     }
 
     [ThreadStatic] static int _comparing;
@@ -307,6 +331,9 @@ public static class Filters
                 var holders = exiledWith.To is Self ? (source is { } own ? [own] : []) : ctx is not null ? Resolver.Objects(exiledWith.To, ctx) : [];
                 return obj.Zone == Zone.Exile && state.ExileLinkList.Any(x => holders.Contains(x.Source) && x.Card == obj.Id && x.CardZoneChanges == obj.ZoneChangeCount);
             }
+            // "Whenever you cast a spell from your graveyard".
+            case CastFrom castFrom:
+                return CastFrom(obj, castFrom.Zone?.Zone);
             // "A creature dealt damage by this creature this turn".
             case Related { Relation: Relation.DealtDamageBy } dealtBy:
             {
