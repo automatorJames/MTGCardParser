@@ -61,8 +61,23 @@ static class Simulate
                 var involved = string.Join(", ", game.State.Objects.Values.Where(x => x.Zone is Zone.Stack or Zone.Battlefield && !x.Card.IsLand).Select(x => x.Card.Name).Distinct().Take(8));
                 failures[key] = failures.TryGetValue(key, out var seen) ? (seen.Count + 1, seen.Seed, seen.Message, seen.Cards) : (1, gameSeed, ex.Message, involved);
             }
-            foreach (var (kind, count) in game.Skips)
-                skips[kind] = skips.GetValueOrDefault(kind) + count;
+            // Each skip with the stack item resolving when it happened.
+            var items = new Dictionary<int, string>();
+            var resolving = "";
+            foreach (var evt in game.Log)
+                switch (evt)
+                {
+                    case SpellCast { Item: var item }: items[item.Id] = item.Description; break;
+                    case AbilityActivated { Item: var item }: items[item.Id] = item.Description; break;
+                    case Triggered { Item: var item }: items[item.Id] = item.Description; break;
+                    case ResolutionBegan began: resolving = items.GetValueOrDefault(began.StackId, ""); break;
+                    case EffectSkipped skipped:
+                    {
+                        var key = $"{skipped.Kind}: {skipped.Why} ({resolving})";
+                        skips[key] = skips.GetValueOrDefault(key) + 1;
+                        break;
+                    }
+                }
         }
 
         Console.WriteLine($"{games:N0} games: {finished:N0} played through ({(finished == 0 ? 0 : turns / finished)} turns on average), {games - finished:N0} threw");

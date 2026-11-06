@@ -474,12 +474,32 @@ public sealed partial class Game
     /// An effect narrowed to how its spell was cast: "if this spell was kicked, …" becomes what it says or nothing.
     /// Null when nothing is left.
     /// </summary>
+    /// <summary>
+    /// "Target creature gets +2/+2. If this spell was kicked, that creature gets +5/+5 instead": the branch kept names
+    /// as "that creature" a target only the branch dropped asks for, so it takes that target selector in its place.
+    /// </summary>
+    static Effect KeepTargets(Effect kept, Effect dropped)
+    {
+        if (kept is null || dropped is null)
+            return kept;
+        var targets = MTGRulesIR.Lowering.NodeWalker.Nodes(dropped).OfType<ObjectSelector>().Where(x => x is { Quantifier: Quantifier.Target, Binding: not null })
+            .Concat<Selector>(MTGRulesIR.Lowering.NodeWalker.Nodes(dropped).OfType<PlayerSelector>().Where(x => x is { Kind: PlayerKind.TargetPlayer or PlayerKind.TargetOpponent, Binding: not null }))
+            .GroupBy(x => x is ObjectSelector o ? o.Binding : ((PlayerSelector)x).Binding).ToDictionary(x => x.Key, x => x.First());
+        var asked = TargetSlots.Of([kept]).Select(x => x.Binding).Where(x => x is not null).ToHashSet();
+        var placed = new HashSet<string>();
+        return (Effect)MTGRulesIR.Lowering.SelfReferenceRepair.Rewrite(kept, node =>
+            node is Reference { Binding: { } binding } && targets.TryGetValue(binding, out var target) && !asked.Contains(binding) && placed.Add(binding) ? target : node);
+    }
+
     public static Effect Specialize(Effect effect, ICollection<string> options)
     {
         switch (effect)
         {
             case Conditional { If: WasCastWith { Spell: Self, Twice: false } cast } conditional:
-                return Specialize(options.Contains(cast.How) != cast.Negated ? conditional.Then : conditional.Else, options);
+            {
+                var taken = options.Contains(cast.How) != cast.Negated;
+                return Specialize(KeepTargets(taken ? conditional.Then : conditional.Else, taken ? conditional.Else : conditional.Then), options);
+            }
             case Conditional conditional:
                 return conditional with { Then = Specialize(conditional.Then, options) ?? new Sequence([]), Else = conditional.Else is null ? null : Specialize(conditional.Else, options) };
             case Sequence sequence:

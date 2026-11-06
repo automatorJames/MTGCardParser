@@ -3,6 +3,8 @@ namespace MTGEngine.Core;
 /// <summary>Matching game objects against the IR's object filters: kinds, qualifier words, controller, zone and the predicates the engine understands.</summary>
 public static class Filters
 {
+    static readonly ImmutableHashSet<string> _permanentTypes = ["Artifact", "Battle", "Creature", "Enchantment", "Land", "Planeswalker"];
+
     /// <summary>Whether <paramref name="obj"/> satisfies <paramref name="filter"/>, read from the point of view of <paramref name="you"/> (the controller of the ability) and <paramref name="source"/> (the object it's on).</summary>
     public static bool Matches(GameState state, ObjectFilter filter, GameObject obj, PlayerId you, ObjectId? source, ObjectId? other = null, bool withStatics = true, EffectContext ctx = null)
     {
@@ -149,6 +151,8 @@ public static class Filters
     {
         var holds = qualifier.Vocabulary switch
         {
+            // "Permanent card": an artifact, battle, creature, enchantment, land or planeswalker card.
+            "CardType" when qualifier.Quality == nameof(ObjectKind.Permanent) => obj.Zone == Zone.Battlefield || traits.Types.Overlaps(_permanentTypes),
             "CardType" => traits.Types.Contains(qualifier.Quality),
             "CreatureType" => traits.Subtypes.Contains(qualifier.Quality) || traits.HasKeyword("Changeling"),
             "LandType" or "PermanentSubtype" or "PlaneswalkerType" or "ArtifactType" or "EnchantmentType" => traits.Subtypes.Contains(qualifier.Quality),
@@ -315,6 +319,9 @@ public static class Filters
                 return Resolver.Players(cast.Player, ctx).Contains(obj.Controller);
             case CastBy { Relation: "Cast", ThisTurn: false, From: null, During: null } cast:
                 return obj.Zone == Zone.Stack && (ctx is not null ? Resolver.Players(cast.Player, ctx) : Resolver.Players(state, cast.Player, you, source)).Contains(obj.Controller);
+            // "Creatures with no counters on them".
+            case WithCounters { Counters.Count: Fixed { Value: 0 } } none:
+                return none.Counters.Kind is { } noneOf ? obj.CountersOf(noneOf) == 0 : !obj.CounterMap.Any(x => x.Value > 0 && x.Key is not ("deathtouch-damage" or "regeneration-shield"));
             case WithCounters counters:
                 return counters.Counters.Kind is { } kind
                     ? (counters.Counters.Count is Fixed count ? obj.CountersOf(kind) >= count.Value : obj.CountersOf(kind) > 0)

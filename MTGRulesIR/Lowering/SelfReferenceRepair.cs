@@ -27,16 +27,24 @@ public static class SelfReferenceRepair
     public static List<Ability> RepairLine(List<Ability> abilities)
     {
         var spells = abilities.Select((ability, i) => (ability, i)).Where(x => x.ability is SpellAbility).ToList();
-        if (spells.Count < 2)
-            return abilities;
-        var steps = spells.Select(x => ((SpellAbility)x.ability).Effect).ToList();
-        if (Repaired(steps) is not { } repaired)
-            return abilities;
         var result = abilities.ToList();
-        for (var n = 0; n < spells.Count; n++)
-            result[spells[n].i] = ((SpellAbility)spells[n].ability) with { Effect = repaired[n] };
-        return result;
+        if (spells.Count >= 2 && Repaired(spells.Select(x => ((SpellAbility)x.ability).Effect).ToList()) is { } repaired)
+            for (var n = 0; n < spells.Count; n++)
+                result[spells[n].i] = ((SpellAbility)spells[n].ability) with { Effect = repaired[n] };
+        // "Put a +1/+1 counter on target creature you control if it's legendary": an "it's" nothing before it named is the target.
+        return result.Select(ability => (Ability)Rewrite(ability, node =>
+            node is Conditional { If: { } condition, Then: { } then } conditional && TargetOf(then) is { } target && UnboundSubject(condition)
+                ? conditional with { If = (Condition)Rewrite(condition, x => x switch
+                {
+                    ObjectIs { Object: Reference { Binding: null } it } objectIs => objectIs with { Object = it with { Binding = target } },
+                    IsKind { Object: Reference { Binding: null } it } isKind => isKind with { Object = it with { Binding = target } },
+                    _ => x,
+                }) }
+                : node)).ToList();
     }
+
+    static bool UnboundSubject(Condition condition) =>
+        condition is ObjectIs { Object: Reference { Binding: null, Text: "it's" or "it" } } or IsKind { Object: Reference { Binding: null, Text: "it's" or "it" } };
 
     static IrNode Fix(IrNode node) =>
         node switch

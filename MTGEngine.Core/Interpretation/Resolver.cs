@@ -342,6 +342,9 @@ public static class Resolver
             return ctx.Subject is { } who ? [who] : [];
         if (ctx.TriggerSubject is { } subject && (reference.Antecedent is null || reference.Text.StartsWith("that") || reference.Text is "it" or "its" or "they" or "them" or "their"))
             return [subject];
+        // "Target player … permanents they control": a player word with nothing before it is that player.
+        if (ctx.Last is null or { Count: 0 } && reference.Text is "they" or "their" or "them" or "that player")
+            return ThatPlayer(ctx).Select(TargetRef.Of).ToImmutableList();
         return ctx.Last ?? [];
     }
 }

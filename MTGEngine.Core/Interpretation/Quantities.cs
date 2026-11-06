@@ -334,8 +334,9 @@ public static class Conditions
             case IsKind kind:
             {
                 var objects = Resolver.Objects(kind.Object, ctx).Select(state.Object).Where(x => x is not null).ToList();
+                // "If it's a land card" about what was revealed, when nothing was: it isn't.
                 if (objects.Count == 0)
-                    return null;
+                    return kind.Object is ObjectSelector { Quantifier: Quantifier.Those } ? kind.Negated : null;
                 var holds = objects.All(obj =>
                 {
                     var traits = Characteristics.Of(state, obj);

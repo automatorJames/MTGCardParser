@@ -82,17 +82,31 @@ static class CastCheck
                     Put(Basic("Forest"), player == 0 ? 1 : 0, Zone.Graveyard);
                     Put(Vanilla("Fallen", "{2}{B}", ["Creature"], 2, 1), player, Zone.Graveyard);
                     Put(Vanilla("Bolt", "{R}", ["Instant"]), player, Zone.Graveyard);
+                    Put(Vanilla("Relic", "{3}", ["Artifact"]), player, Zone.Graveyard);
+                    Put(Vanilla("Aura", "{1}{W}", ["Enchantment"]), player, Zone.Graveyard);
+                    // Creatures of several colors, types and states: a white flyer, a black goblin with a counter, a tapped blue wizard, a token.
+                    Put(new CardDefinition("Skyward", ManaCost.Parse("{1}{W}"), [], ["Creature"], ["Bird"], 1, 1, null, [new KeywordLine([new KeywordInstance("Flying")])], ["Flying"], [Color.White]), player, Zone.Battlefield);
+                    var goblin = Put(new CardDefinition("Grunt", ManaCost.Parse("{B}"), [], ["Creature"], ["Goblin", "Warrior"], 1, 1, null, [], [], [Color.Black]), player, Zone.Battlefield);
+                    game.Emit(new CountersChanged(goblin, "+1/+1", 1));
+                    var wizard = Put(new CardDefinition("Adept", ManaCost.Parse("{2}{U}"), [], ["Creature"], ["Human", "Wizard"], 1, 3, null, [], [], [Color.Blue]), player, Zone.Battlefield);
+                    game.Tap(wizard);
+                    game.CreateToken(new TokenSpec(Types: ["Creature"], Subtypes: ["Spirit"], Colors: ["White"], Power: new Fixed(1), Toughness: new Fixed(1)), new PlayerId(player));
+                    Put(Vanilla("Nonbasic", "", ["Land"]), player, Zone.Battlefield);
                 }
                 Put(Vanilla("Spare", "{4}", ["Creature"], 4, 4), 0, Zone.Hand);
+                Put(Vanilla("Trick", "{U}", ["Instant"]), 0, Zone.Hand);
                 Put(Basic("Swamp"), 0, Zone.Hand);
                 Put(Vanilla("Their Card", "{4}", ["Creature"], 4, 4), 1, Zone.Hand);
+                Put(Vanilla("Their Sorcery", "{2}{R}", ["Sorcery"]), 1, Zone.Hand);
+                Put(Vanilla("Their Relic", "{2}", ["Artifact"]), 1, Zone.Hand);
+                Put(Basic("Island"), 1, Zone.Hand);
                 var id = Put(card, 0, Zone.Hand);
                 game.Emit(new SummoningSicknessCleared(new PlayerId(0)));
                 game.Emit(new SummoningSicknessCleared(new PlayerId(1)));
                 game.Emit(new TurnBegan(2, new PlayerId(0)));
                 game.Emit(new StepBegan(Step.Main1, new PlayerId(0)));
 
-                var offer = game.LegalActions(new PlayerId(0)).OfType<CastSpell>().Where(x => x.Card == id).OrderBy(x => x.Alternative == -1 ? 0 : 1).FirstOrDefault();
+                var offer = game.LegalActions(new PlayerId(0)).OfType<CastSpell>().Where(x => x.Card == id && x.Alternative is not (Game.ForetellExile or Game.PlotExile or Game.SuspendCast)).OrderBy(x => x.Alternative == -1 ? 0 : 1).FirstOrDefault();
                 if (offer is null)
                 {
                     notOffered.Add(card.Name);

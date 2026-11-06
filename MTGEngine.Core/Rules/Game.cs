@@ -1356,7 +1356,8 @@ public sealed partial class Game
                 && Conditions.Evaluate(conditional.If, EffectContext.Snapshot(State, controller, obj.Id)) == true)
                 Consider(new ReplacementAbility(enters), entering);
         foreach (var other in State.Battlefield.Where(x => x.Id != obj.Id))
-            foreach (var replacement in other.Card.Abilities.OfType<ReplacementAbility>())
+            foreach (var replacement in other.Card.Abilities.OfType<ReplacementAbility>()
+                .Concat(State.Temporary.Where(x => x.Target == other.Id && x.ActiveIn(State)).SelectMany(x => x.Abilities ?? []).OfType<ReplacementAbility>()))
                 Consider(replacement, other);
 
         return tapped;

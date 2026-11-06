@@ -25,6 +25,19 @@ public static class Interpreter
                     ctx = Execute(step, ctx);
                 return ctx;
 
+            // "Each player may put an artifact, creature, enchantment, or land card from their hand onto the battlefield": each in turn, for themselves.
+            case Optional { Chooser: PlayerSelector { Kind: PlayerKind.EachPlayer or PlayerKind.EachOpponent } } eachMay when Resolver.Players(eachMay.Chooser, ctx) is { Count: > 1 } mayPlayers:
+            {
+                foreach (var player in mayPlayers)
+                {
+                    var yes = game.Decide(new YesNo(player, $"You may: {Describe(eachMay.Effect)}")).Yes;
+                    game.Emit(new ChoiceMade(player, "may", yes ? "yes" : "no"));
+                    if (yes)
+                        Execute(eachMay.Effect, ctx with { Last = [TargetRef.Of(player)] });
+                }
+                return ctx;
+            }
+
             case Optional optional:
             {
                 var chooser = optional.Chooser is null ? ctx.Controller : Resolver.Players(optional.Chooser, ctx).FirstOrDefault(ctx.Controller);
@@ -117,9 +130,12 @@ public static class Interpreter
             case Draw draw:
             {
                 var count = Quantities.Evaluate(draw.Count, ctx) ?? 1;
+                var before = game.Log.Count;
                 foreach (var player in Resolver.Players(draw.Player, ctx))
                     game.Draw(player, count);
-                return ctx with { LastAmount = count };
+                // "Draw a card and reveal it. If it isn't a land card, discard it": "it" is what was drawn.
+                var drawn = game.Log.Skip(before).OfType<Drew>().Where(x => x.Card is not null).Select(x => TargetRef.Of(x.Card.Value)).ToImmutableList();
+                return drawn.Count > 0 ? ctx with { LastAmount = count, Last = drawn, Affected = drawn } : ctx with { LastAmount = count };
             }
 
             case GainLife gain:
@@ -561,7 +577,8 @@ public static class Interpreter
                 var objects = Resolver.Objects(counter.Objects, ctx);
                 foreach (var id in objects)
                     game.CounterSpell(id);
-                return ctx;
+                // "If that spell's mana value was 3 or less": the spell countered.
+                return objects.Count > 0 ? ctx with { Last = objects.Select(TargetRef.Of).ToImmutableList() } : ctx;
             }
 
             case AddMana add:
@@ -691,6 +708,15 @@ public static class Interpreter
             {
                 var seen = Resolver.Objects(look.What, ctx).Select(TargetRef.Of).ToImmutableList();
                 return seen.Count == 0 ? ctx : ctx with { Last = seen, Affected = seen };
+            }
+
+            // "Each player reveals the top five cards of their library": each from their own.
+            case Reveal { Player: PlayerSelector { Kind: PlayerKind.EachPlayer or PlayerKind.EachOpponent } } reveal when Resolver.Players(reveal.Player, ctx) is { Count: > 1 } revealers:
+            {
+                List<TargetRef> all = [];
+                foreach (var player in revealers)
+                    all.AddRange(Resolver.Objects(reveal.What, ctx with { Last = [TargetRef.Of(player)] }).Select(TargetRef.Of));
+                return all.Count == 0 ? ctx : ctx with { Last = all.ToImmutableList(), Affected = all.ToImmutableList() };
             }
 
             case Reveal reveal:
@@ -950,6 +976,19 @@ public static class Interpreter
                 return Execute(let.Effect, ctx with { X = value.Value }) with { X = ctx.X };
             }
 
+            // "For each creature target player controls, create a token that's a copy of that creature": once for each, about it.
+            case ForEachOf { Count: CountOf { Of: ObjectSelector each } } forEach when MTGRulesIR.Lowering.NodeWalker.Nodes(forEach.Effect).OfType<Reference>().Any():
+            {
+                foreach (var id in Resolver.Objects(each, ctx).ToList())
+                {
+                    var bindings = new Dictionary<string, ImmutableList<TargetRef>>(ctx.Bindings ?? []);
+                    if (each.Binding is { } binding)
+                        bindings[binding] = [TargetRef.Of(id)];
+                    ctx = Execute(forEach.Effect, ctx with { Last = [TargetRef.Of(id)], TriggerSubject = TargetRef.Of(id), Bindings = bindings }) with { TriggerSubject = ctx.TriggerSubject, Bindings = ctx.Bindings };
+                }
+                return ctx;
+            }
+
             case ForEachOf forEach:
             {
                 var times = Quantities.Evaluate(forEach.Count, ctx) ?? 0;
@@ -1075,6 +1114,11 @@ public static class Interpreter
                 var token = game.CreateCopyToken(copy, ctx.Controller);
                 return ctx with { Affected = [TargetRef.Of(token)], Last = [TargetRef.Of(token)] };
             }
+
+            // "This turn, each creature you control enters with an additional +1/+1 counter on it": an entry replacement its source has for that long.
+            case EntersBattlefield { Duration: ThisTurn or UntilPhase { Phase.Phase: "EndOfTurn" } } lasting when ctx.Source is { } replacer && state.Object(replacer) is { Zone: Zone.Battlefield }:
+                game.Emit(new TemporaryEffectAdded(new TemporaryEffect(replacer, 0, 0, [], state.Turn, Abilities: [new ReplacementAbility(lasting with { Duration = null })])));
+                return ctx;
 
             case ExileForLater:
                 if (ctx.Source is { } warped)
