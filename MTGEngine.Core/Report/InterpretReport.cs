@@ -404,6 +404,7 @@ public static class InterpreterSupport
             WasCastWith { Twice: true } => "WasCastWith.Twice",
             WasCastWith cast when cast.How is not ("Kicked" or "AdditionalCost") => $"WasCastWith.{cast.How}",
             Targets { Spell: not (Self or Reference { Text: "it" }) } => "Targets.Spell",
+            LabeledAbility { Word: "MaxSpeed", Ability: not (StaticAbility or TriggeredAbility or ActivatedAbility or EffectLine) } => "LabeledAbility.MaxSpeed",
             KeywordCost keywordCost when !KeywordAbilities.CostHandled(keywordCost) => "KeywordCost",
             CastBy cast when cast.Relation is not ("Control" or "Cast") || cast.Relation == "Cast" && (cast.ThisTurn || cast.From is not null || cast.During is not null) => $"CastBy.{cast.Relation}{(cast.ThisTurn ? ".ThisTurn" : "")}{(cast.From is not null ? ".From" : "")}",
             Timing timing when !Game.TimingKinds.Contains(timing.Kind) => $"Timing.{timing.Kind}",

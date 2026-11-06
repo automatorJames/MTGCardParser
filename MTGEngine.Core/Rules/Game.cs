@@ -96,6 +96,8 @@ public sealed partial class Game
             _decisionsThisTurn = 0;
         if (_eventsThisTurn > RunawayEvents)
             throw Runaway("events");
+        if (evt is LifeChanged { Delta: < 0 } lost)
+            RaiseSpeed(lost.Player);
         if (evt is TemporaryEffectAdded && State.Temporary.Count > RunawayObjects)
             throw Runaway("temporary effects: " + string.Join(", ", State.Temporary.GroupBy(x => State.Object(x.Target)?.Card.Name + (x.UntilEndOfTurn is null ? " (no end)" : "")).OrderByDescending(x => x.Count()).Take(5).Select(x => $"{x.Count()} on {x.Key}")) + "; last " + evt);
         if (evt is ObjectCreated && State.Objects.Count > RunawayObjects)
@@ -517,6 +519,9 @@ public sealed partial class Game
                         if (activated.Effect is AddMana && activated.Costs.All(x => x is TapSelf))
                             continue;
                         if (sorceryOnly && !sorcerySpeed)
+                            continue;
+                        // "Max speed — {ability}" can be activated only at max speed.
+                        if (activated.Effect is Conditional { If: AtMaxSpeed, Else: null } && state.Player(player).Speed < 4)
                             continue;
                         if (onceEachTurn && state.Activations.GetValueOrDefault($"{obj.Id}:{index}") > 0)
                             continue;
@@ -1039,6 +1044,7 @@ public sealed partial class Game
         {
             var changed = false;
             UpdateControl();
+            StartEngines();
 
             foreach (var player in State.Players.Where(x => !x.Lost))
                 if (player.Life <= 0 || player.DrewFromEmptyLibrary || player.Poison >= 10)

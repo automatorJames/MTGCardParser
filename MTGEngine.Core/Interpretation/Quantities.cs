@@ -167,6 +167,8 @@ public static class Conditions
         {
             case null:
                 return true;
+            case AtMaxSpeed:
+                return ctx.State.Player(ctx.Controller).Speed >= 4;
             case And and:
             {
                 bool? result = true;

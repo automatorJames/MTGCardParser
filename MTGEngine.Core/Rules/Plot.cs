@@ -60,6 +60,26 @@ public sealed partial class Game
     static (Cost Cost, string Option)? KeywordCast(CardDefinition card, int alternative) =>
         _keywordCasts.Where(x => x.Index == alternative).Select(x => KeywordCost(card, x.Keyword) is { } cost ? (cost, x.Option) : ((Cost, string)?)null).FirstOrDefault();
 
+    /// <summary>"Start your engines!": a player who controls such a permanent and has no speed gets speed 1.</summary>
+    void StartEngines()
+    {
+        foreach (var player in State.PlayersInGame.ToList())
+            if (State.Player(player).Speed == 0 && HasEngines(player))
+                Emit(new SpeedChanged(player, 1, 0));
+    }
+
+    bool HasEngines(PlayerId player) =>
+        State.Battlefield.Any(x => x.Controller == player && Characteristics.Of(State, x).HasKeyword("StartYourEngines"));
+
+    /// <summary>An opponent of the active player lost life: the active player's speed rises by one, once each turn, up to 4.</summary>
+    void RaiseSpeed(PlayerId loser)
+    {
+        var active = State.ActivePlayer;
+        if (loser == active || State.Player(active) is not { Speed: > 0 and < 4 } racer || racer.SpeedRaisedOnTurn == State.Turn || !HasEngines(active))
+            return;
+        Emit(new SpeedChanged(active, racer.Speed + 1, State.Turn));
+    }
+
     static Cost PlotCost(CardDefinition card) => KeywordCost(card, "Plot");
 
     /// <summary>Whether <paramref name="player"/> could plot <paramref name="obj"/> now: in their hand, at sorcery speed, with its plot cost.</summary>

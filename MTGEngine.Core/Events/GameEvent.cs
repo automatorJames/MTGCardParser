@@ -64,6 +64,9 @@ public sealed record Note(string Text) : GameEvent;
 public sealed record EffectSkipped(string Kind, string Why) : GameEvent;
 public sealed record DelayedTriggerCreated(DelayedTrigger Trigger) : GameEvent;
 public sealed record DelayedTriggerRemoved(int Id) : GameEvent;
+/// <summary>A player's speed became <see cref="Speed"/> ("start your engines!"), on turn <see cref="Turn"/>.</summary>
+public sealed record SpeedChanged(PlayerId Player, int Speed, int Turn) : GameEvent;
+
 public sealed record ModesChosen(PlayerId Player, ImmutableList<int> Modes) : GameEvent;
 public sealed record CastOptionsChosen(ObjectId Spell, ImmutableHashSet<string> Options, ManaPool Spent = null) : GameEvent;
 public sealed record SpellCopied(StackItem Item) : GameEvent;
@@ -222,6 +225,9 @@ public static class Reducer
                     return state.WithObject(obj with { Damage = obj.Damage + (damage.AsCounters ? 0 : damage.Amount), Counters = damage.Deathtouch ? obj.CounterMap.SetItem("deathtouch-damage", 1) : obj.Counters });
                 return state;
             }
+
+            case SpeedChanged speed:
+                return state.WithPlayer(state.Player(speed.Player) with { Speed = speed.Speed, SpeedRaisedOnTurn = speed.Turn });
 
             case LifeChanged life:
             {

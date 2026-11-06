@@ -107,7 +107,9 @@ public sealed record PlayerState(
     int LifeLostThisTurn = 0,
     int SpellsCastThisTurn = 0,
     int Energy = 0,
-    ImmutableList<RestrictedMana> Restricted = null)
+    ImmutableList<RestrictedMana> Restricted = null,
+    int Speed = 0,
+    int SpeedRaisedOnTurn = 0)
 {
     /// <summary>Mana in the pool that can be spent only on some things ("spend this mana only to cast creature spells"), apart from <see cref="Pool"/>.</summary>
     public ImmutableList<RestrictedMana> RestrictedList => Restricted ?? ImmutableList<RestrictedMana>.Empty;

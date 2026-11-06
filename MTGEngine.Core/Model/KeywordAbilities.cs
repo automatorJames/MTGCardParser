@@ -9,6 +9,9 @@ public sealed record ExileForLater : Effect;
 /// <summary>Abilities <see cref="Objects"/> gain until end of turn (backup's "it gains the following abilities"), unless it's this object itself.</summary>
 public sealed record GrantUntilEndOfTurn(Selector Objects, IReadOnlyList<Ability> Abilities) : Effect;
 
+/// <summary>"Max speed —": the ability works while its controller's speed is 4.</summary>
+public sealed record AtMaxSpeed : Condition;
+
 /// <summary>Collect evidence N: exiling cards from your graveyard with total mana value N or more.</summary>
 public sealed record CollectEvidence(int Total) : Effect;
 

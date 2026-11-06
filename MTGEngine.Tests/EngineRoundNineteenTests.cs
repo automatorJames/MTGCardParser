@@ -138,4 +138,23 @@ public sealed class EngineRoundNineteenTests
         Assert.True(game.State.Object(bears).Tapped);
         Assert.Equal(3, game.State.Objects.Values.Count(x => x.Zone == Zone.Exile));
     }
+
+    [Fact]
+    public void SpeedStartsRisesOncePerTurnAndUnlocksMaxSpeed()
+    {
+        var game = Started("Plains", new GreedyAgent());
+        var assailant = Put(game, Cards.Named("Swiftwing Assailant"), 0);
+        game.CheckStateAndTriggers();
+        Assert.Equal(1, game.P0().Speed);
+
+        game.PlayTurn(new PlayerId(0));
+        Assert.Equal(17, game.P1().Life);
+        Assert.Equal(2, game.P0().Speed);
+        Assert.False(Characteristics.Of(game.State, game.State.Object(assailant)).HasKeyword("Vigilance"));
+
+        game.Emit(new SpeedChanged(new PlayerId(0), 4, 1));
+        var traits = Characteristics.Of(game.State, game.State.Object(assailant));
+        Assert.True(traits.HasKeyword("Vigilance"));
+        Assert.Equal(4, traits.Toughness);
+    }
 }

@@ -125,6 +125,7 @@ public sealed record CardDefinition(
     public static Ability Unwrap(Ability ability) =>
         ability switch
         {
+            LabeledAbility { Word: "MaxSpeed" } maxSpeed => AtMaxSpeed(Unwrap(maxSpeed.Ability)),
             LabeledAbility labeled => Unwrap(labeled.Ability),
             FlavorAbility flavor => Unwrap(flavor.Ability),
             // "You may play lands from the top of your library", "you may cast this card from your graveyard as long as
@@ -175,6 +176,20 @@ public sealed record CardDefinition(
             Negated { Of: Variable { Name: "X" or "x" } } => -1,
             _ => null,
         };
+
+    /// <summary>A "max speed —" ability, working only while its controller's speed is 4.</summary>
+    static Ability AtMaxSpeed(Ability ability)
+    {
+        var condition = new AtMaxSpeed();
+        return ability switch
+        {
+            StaticAbility statics => statics with { While = statics.While is null ? condition : new And([statics.While, condition]) },
+            EffectLine line when AsStatic(line) is StaticAbility statics => statics with { While = statics.While is null ? condition : new And([statics.While, condition]) },
+            TriggeredAbility trigger => trigger with { If = trigger.If is null ? condition : new And([trigger.If, condition]) },
+            ActivatedAbility activated => new ActivatedAbility(activated.Costs, new Conditional(condition, activated.Effect)) is var gated ? gated : activated,
+            _ => ability,
+        };
+    }
 
     static StaticAbility PlayFromStatic(MayPlayFrom permission) =>
         new(permission with { Duration = null }, permission.Duration is While holds ? holds.Condition : null);
