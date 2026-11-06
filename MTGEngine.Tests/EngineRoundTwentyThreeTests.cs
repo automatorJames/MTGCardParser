@@ -543,4 +543,18 @@ public sealed class EngineRoundTwentyThreeTests
         Assert.Equal(Zone.Hand, game.State.Object(colossus).Zone);
         Assert.Equal(16, game.P0().Life);
     }
+
+    [Fact]
+    public void RecommissionReturnsACreatureWithAnExtraCounter()
+    {
+        var game = Started("Plains", new GreedyAgent(attacks: false));
+        Lands(game, "Plains", 2);
+        var fallen = Put(game, Cards.Vanilla("Fallen", "{2}{B}", 2, 1), 0, Zone.Graveyard);
+        Put(game, Cards.Named("Recommission"), 0, Zone.Hand);
+
+        game.PlayTurn(new PlayerId(0));
+
+        Assert.Equal(Zone.Battlefield, game.State.Object(fallen).Zone);
+        Assert.Equal(1, game.State.Object(fallen).CountersOf("+1/+1"));
+    }
 }

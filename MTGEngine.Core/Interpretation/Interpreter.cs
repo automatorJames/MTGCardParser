@@ -1310,6 +1310,16 @@ public static class Interpreter
                 game.Emit(new TemporaryEffectAdded(new TemporaryEffect(replacer, 0, 0, [], state.Turn, Abilities: [new ReplacementAbility(lasting with { Duration = null })])));
                 return ctx;
 
+            // "If a creature enters this way, it enters with an additional +1/+1 counter on it": a step after the move, so the
+            // counters go on the permanent that just entered.
+            case EntersBattlefield { Duration: null, States: null or { Count: 0 }, With: { Count: > 0 } with } entered when entered.Objects is not (null or Self):
+            {
+                foreach (var id in Resolver.Objects(entered.Objects, ctx).Where(x => state.Object(x) is { Zone: Zone.Battlefield, EnteredThisTurn: true }).ToList())
+                    foreach (var step in with)
+                        Execute(step, ctx with { Source = id, Last = [TargetRef.Of(id)] });
+                return ctx;
+            }
+
             case ExileForLater:
                 if (ctx.Source is { } warped)
                     game.ExileForLater(warped);
