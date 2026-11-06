@@ -49,6 +49,9 @@ public static class SelfReferenceRepair
                 step = held with { Objects = tapped.Objects };
             if (i > 0 && step is CantBeRegenerated { Objects: Self } doomed && steps[i - 1] is Destroy { Objects: not (Self or null) } destroyed)
                 step = doomed with { Objects = destroyed.Objects };
+            // "An opponent chooses a permanent you control other than this creature and exiles it", "choose target permanent card in your graveyard … return it to your hand": "it" is what was chosen.
+            if (i > 0 && steps[i - 1] is ChooseEffect { From: [ObjectSelector { Binding: { } chosen }] } && WithObjects(step, new Reference(chosen, "it")) is { } acting)
+                step = acting;
             if (found)
                 step = (Effect)Rewrite(step, node => node is Reference { Text: "it" or "it's" } it && (it.Binding is null || !local.Contains(it.Binding)) ? _thoseCards : node);
             if (!ReferenceEquals(step, steps[i]))
@@ -60,6 +63,17 @@ public static class SelfReferenceRepair
             made = steps[i] is CreateTokens || steps[i] is KeywordAction { Actions: [{ Keyword: "Manifest" or "ManifestDread" or "Amass" }, ..] } || made && steps[i] is not (Reveal or LookAt or SearchLibrary);
         }
         return repaired;
+    }
+
+    /// <summary><paramref name="step"/> acting on <paramref name="objects"/> where it acted on this object; null when it doesn't.</summary>
+    static Effect WithObjects(Effect step, Selector objects)
+    {
+        var property = step.GetType().GetProperty("Objects");
+        if (property is null || !property.CanWrite || property.PropertyType != typeof(Selector) || property.GetValue(step) is not Self)
+            return null;
+        var copy = (Effect)step.GetType().GetMethod("<Clone>$")!.Invoke(step, null);
+        property.SetValue(copy, objects);
+        return copy;
     }
 
     static bool FindsOtherCards(Effect step) =>

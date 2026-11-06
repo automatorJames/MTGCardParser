@@ -54,6 +54,12 @@ public sealed partial class Game
         }
         if (alternative == PlottedCast)
             options.Add("Plotted");
+        if (alternative == RetraceCast)
+        {
+            options.Add("Retraced");
+            if (!PlanAdditional(_retraceCost, player, id, 0, ref mana, actions, options))
+                return;
+        }
 
         // "You may exile two green cards from your hand rather than pay this spell's mana cost."
         if (alternative >= 0 && Alternatives(card).FirstOrDefault(a => a.Index == alternative).Alternative is { } chosen)

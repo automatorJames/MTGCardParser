@@ -72,7 +72,7 @@ public sealed partial class Game
 
     /// <summary>The keyword cost and option for a keyword alternative index; null for other indices.</summary>
     static (Cost Cost, string Option)? KeywordCast(CardDefinition card, int alternative) =>
-        _keywordCasts.Where(x => x.Index == alternative).Select(x => KeywordCost(card, x.Keyword) is { } cost ? (cost, x.Option) : ((Cost, string)?)null).FirstOrDefault();
+        _keywordCasts.Append((Keyword: "Escape", Index: EscapeCast, Option: "Escaped")).Where(x => x.Index == alternative).Select(x => KeywordCost(card, x.Keyword) is { } cost ? (cost, x.Option) : ((Cost, string)?)null).FirstOrDefault();
 
     /// <summary>"Start your engines!": a player who controls such a permanent and has no speed gets speed 1.</summary>
     void StartEngines()

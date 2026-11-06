@@ -1,6 +1,6 @@
 namespace MTGEngine.Tests;
 
-/// <summary>The twenty-first engine round: scavenge, embalm, eternalize, transmute, modular, unleash, mentor, evolve, extort.</summary>
+/// <summary>The twenty-first engine round: scavenge, embalm, eternalize, transmute, modular, unleash, mentor, evolve, extort, split second, totem armor, clash in a spell, escape, retrace.</summary>
 public sealed class EngineRoundTwentyOneTests
 {
     /// <summary>Greedy, but activates an ability before casting a spell.</summary>
@@ -163,5 +163,85 @@ public sealed class EngineRoundTwentyOneTests
 
         Assert.Equal(19, game.P1().Life);
         Assert.Equal(21, game.P0().Life);
+    }
+
+    [Fact]
+    public void SuddenShockLeavesNoTimeToRespond()
+    {
+        var game = Started("Mountain", new GreedyAgent(attacks: false));
+        Lands(game, "Mountain", 3);
+        var sudden = Put(game, Cards.Named("Sudden Shock"), 0, Zone.Hand);
+        Put(game, Cards.Named("Shock"), 0, Zone.Hand);
+        game.Emit(new TurnBegan(1, new PlayerId(0)));
+        game.Emit(new StepBegan(Step.Main1, new PlayerId(0)));
+        Assert.Equal(2, game.LegalActions(new PlayerId(0)).Count(x => x is CastSpell));
+
+        game.Take(Assert.Single(game.LegalActions(new PlayerId(0)), x => x is CastSpell cast && cast.Card == sudden), new PlayerId(0));
+
+        Assert.Single(game.State.Stack);
+        Assert.DoesNotContain(game.LegalActions(new PlayerId(0)), x => x is CastSpell);
+    }
+
+    [Fact]
+    public void BearUmbraIsDestroyedInsteadOfTheCreature()
+    {
+        var game = Started("Forest", new GreedyAgent(attacks: false));
+        var bears = Put(game, Cards.Vanilla("Bears", "{1}{G}", 2, 2), 0);
+        var umbra = Put(game, Cards.Named("Bear Umbra"), 0, Zone.Hand);
+        game.MoveToZone(umbra, Zone.Battlefield, new PlayerId(0), attachTo: bears);
+
+        Assert.True(game.Destroy(bears));
+
+        Assert.Equal(Zone.Battlefield, game.State.Object(bears).Zone);
+        Assert.Equal(Zone.Graveyard, game.State.Object(umbra).Zone);
+    }
+
+    [Fact]
+    public void LashOutHitsTheControllerWhenItWinsTheClash()
+    {
+        var game = Started("Mountain", new GreedyAgent(attacks: false));
+        Lands(game, "Mountain", 2);
+        var colossus = Put(game, Cards.Vanilla("Colossus", "{9}", 9, 9), 0, Zone.Hand);
+        game.MoveToZone(colossus, Zone.Library, new PlayerId(0), position: 0);
+        var bears = Put(game, Cards.Vanilla("Bears", "{1}{G}", 2, 2), 1);
+        Put(game, Cards.Named("Lash Out"), 0, Zone.Hand);
+
+        game.PlayTurn(new PlayerId(0));
+
+        Assert.Equal(Zone.Graveyard, game.State.Object(bears).Zone);
+        Assert.Equal(17, game.P1().Life);
+    }
+
+    [Fact]
+    public void SleepOfTheDeadEscapesFromTheGraveyard()
+    {
+        var game = Started("Island", new GreedyAgent(attacks: false));
+        Lands(game, "Island", 3);
+        var bears = Put(game, Cards.Vanilla("Bears", "{1}{G}", 2, 2), 1);
+        var others = Enumerable.Range(0, 3).Select(i => Put(game, Cards.Vanilla($"Fodder {i}", "{1}", 1, 1), 0, Zone.Graveyard)).ToList();
+        var sleep = Put(game, Cards.Named("Sleep of the Dead"), 0, Zone.Graveyard);
+
+        game.PlayTurn(new PlayerId(0));
+
+        Assert.True(game.State.Object(bears).Tapped);
+        Assert.All(others, x => Assert.Equal(Zone.Exile, game.State.Object(x).Zone));
+        Assert.Equal(Zone.Graveyard, game.State.Object(sleep).Zone);
+    }
+
+    [Fact]
+    public void RavensCrimeRetracesByDiscardingALand()
+    {
+        var game = Started("Swamp", new GreedyAgent(attacks: false));
+        Lands(game, "Swamp", 1);
+        Put(game, Cards.Basic("Swamp"), 0, Zone.Hand);
+        Put(game, Cards.Basic("Swamp"), 0, Zone.Hand);
+        var victim = Put(game, Cards.Vanilla("Bears", "{1}{G}", 2, 2), 1, Zone.Hand);
+        var crime = Put(game, Cards.Named("Raven's Crime"), 0, Zone.Graveyard);
+
+        game.PlayTurn(new PlayerId(0));
+
+        Assert.Equal(Zone.Graveyard, game.State.Object(victim).Zone);
+        Assert.Equal(Zone.Graveyard, game.State.Object(crime).Zone);
+        Assert.Empty(game.P0().Hand);
     }
 }

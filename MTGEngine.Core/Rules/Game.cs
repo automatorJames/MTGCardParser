@@ -478,6 +478,7 @@ public sealed partial class Game
                 && AdditionalPayable(flashback, player, obj.Id, 0) && AdditionalCostsOf(obj.Card).All(cost => AdditionalPayable(cost, player, obj.Id, 0))
                 && TargetsAvailable(SpellSlots(obj.Card), player, obj.Id))
                 actions.Add(new CastSpell(obj.Id, 0, Alternative: Flashback));
+            actions.AddRange(GraveyardCastActions(obj, player, sorcerySpeed));
         }
 
         foreach (var (permission, obj) in Permitted(player).Concat(StaticPermitted(player)).DistinctBy(x => x.Card.Id).ToList())
@@ -551,6 +552,9 @@ public sealed partial class Game
                 }
             }
         }
+
+        if (SplitSecond())
+            actions.RemoveAll(x => x is CastSpell { Alternative: not (ForetellExile or PlotExile or SuspendCast) } || x is ActivateAbility activate && !IsManaAbility(activate));
 
         return actions.ToImmutableList();
     }
@@ -1253,6 +1257,9 @@ public sealed partial class Game
                         return;
                     if (enters.If is { } condition && Conditions.Evaluate(condition, EffectContext.Snapshot(State, controller, obj.Id)) == false)
                         return;
+                    // "It escapes with …": only when it was cast with escape.
+                    if (enters.States?.Contains("Escapes") == true && !obj.WasCastWith("Escaped"))
+                        return;
                     if (enters.States?.Contains("Tapped") == true)
                         tapped = true;
                     onEntry.AddRange(enters.With ?? []);
@@ -1369,6 +1376,8 @@ public sealed partial class Game
         var traits = Characteristics.Of(State, obj);
         if (traits.HasKeyword("Indestructible"))
             return false;
+        if (TotemArmorSaves(id))
+            return true;
         if (!cantBeRegenerated && !traits.Cant("BeRegenerated") && obj.CountersOf("regeneration-shield") > 0)
         {
             Emit(new CountersChanged(id, "regeneration-shield", -1));

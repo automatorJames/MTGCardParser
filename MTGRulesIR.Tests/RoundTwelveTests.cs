@@ -90,4 +90,12 @@ public sealed class RoundTwelveTests(GrammarFixture fixture)
         var bound = Assert.IsType<Bound>(Assert.Single(MTGRulesIR.Lowering.NodeWalker.Nodes(ability).OfType<ObjectSelector>(), x => x.Count is Bound).Count);
         Assert.Equal(Comparison.GreaterOrEqual, bound.Comparison);
     }
+
+    [Fact]
+    public void ItAfterChoosingIsWhatWasChosen()
+    {
+        var ability = fixture.LowerAbility("when this creature enters, an opponent chooses a permanent you control other than this creature and exiles it.");
+
+        Assert.IsType<Reference>(Assert.Single(MTGRulesIR.Lowering.NodeWalker.Nodes(ability).OfType<Exile>()).Objects);
+    }
 }

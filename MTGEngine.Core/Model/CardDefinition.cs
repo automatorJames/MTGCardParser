@@ -110,7 +110,8 @@ public sealed record CardDefinition(
             return abilities;
         // A line of keywords the engine carries out: what follows them is their reminder text, which the engine doesn't need.
         for (var i = 0; i < abilities.Count; i++)
-            if (abilities[i] is KeywordLine handled && handled.Keywords.All(k => MTGEngine.Core.Keywords.Handles(k.Keyword)))
+            // A spell's keyword action in the middle of the line ("counter target spell …. clash with an opponent. if you win, …") is one of its steps.
+            if (abilities[i] is KeywordLine handled && handled.Keywords.All(k => MTGEngine.Core.Keywords.Handles(k.Keyword)) && !(i > 0 && handled.Keywords.All(k => KeywordAbilities.Actions.Contains(Normalize(k.Keyword)))))
                 return abilities.Take(i + 1);
         // "When this creature enters, it connives. (draw a card, then discard a card. …)": the reminder of a keyword
         // action the engine carries out, at the end of the line, explains the action.
