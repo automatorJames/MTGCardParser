@@ -109,7 +109,9 @@ public static class Resolver
                 return ctx.Source is { } attachment && state.Object(attachment)?.AttachedTo is { } host ? [host] : [];
             case ObjectSelector pooled when PoolOf(pooled, ctx) is { } pool:
             {
-                var matching = Filters.DistinctBy(pool.Where(id => state.Object(id) is { } obj && PoolMatches(pooled.Filter, obj, ctx)), pooled.Filter, state, state.Object).ToImmutableList();
+                // A sacrificed token is gone; it's judged as it last was.
+                GameObject Known(ObjectId id) => state.Object(id) ?? state.LastKnownOf(id);
+                var matching = Filters.DistinctBy(pool.Where(id => Known(id) is { } obj && PoolMatches(pooled.Filter, obj, ctx)), pooled.Filter, state, Known).ToImmutableList();
                 var wanted = pooled.Quantifier switch
                 {
                     Quantifier.Count => Quantities.Evaluate(pooled.Count, ctx),

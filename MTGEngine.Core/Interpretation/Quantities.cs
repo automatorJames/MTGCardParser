@@ -134,9 +134,10 @@ public static class Quantities
             case CharacteristicOf characteristic:
             {
                 var objects = Resolver.Objects(characteristic.Of, ctx);
+                // "Gain life equal to that creature card's toughness" when no card was chosen: nothing.
                 if (objects.Count == 0)
-                    return null;
-                var obj = ctx.State.Object(objects[0]);
+                    return characteristic.Of is ObjectSelector { Quantifier: Quantifier.Those } ? 0 : null;
+                var obj = ctx.State.Object(objects[0]) ?? ctx.State.LastKnownOf(objects[0]);
                 return obj is null ? null : Filters.CharacteristicValue(characteristic.Characteristic, obj, Characteristics.Of(ctx.State, obj));
             }
             case Special { Kind: "ThatMany" or "ThatMuch" }:

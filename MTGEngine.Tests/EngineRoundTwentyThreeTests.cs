@@ -467,4 +467,17 @@ public sealed class EngineRoundTwentyThreeTests
         Assert.Equal(Zone.Battlefield, game.State.Object(land.Id).Zone);
         Assert.True(game.State.Object(land.Id).Tapped);
     }
+
+    [Fact]
+    public void HomaridSpawningBedMakesAsManyCamaridsAsTheSacrificedCreaturesManaValue()
+    {
+        var game = Started("Island", new GreedyAgent(attacks: false));
+        Lands(game, "Island", 3);
+        Put(game, Cards.Named("Homarid Spawning Bed"), 0);
+        Put(game, Cards.Vanilla("Merfolk", "{2}{U}", 1, 1), 0);
+
+        game.PlayTurn(new PlayerId(0));
+
+        Assert.Equal(3, game.BattlefieldOf(0).Count(x => x.Card.IsToken));
+    }
 }
