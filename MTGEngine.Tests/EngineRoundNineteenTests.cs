@@ -157,4 +157,25 @@ public sealed class EngineRoundNineteenTests
         Assert.True(traits.HasKeyword("Vigilance"));
         Assert.Equal(4, traits.Toughness);
     }
+
+    [Fact]
+    public void NyxbornRollickerBestowedEnchantsThenBecomesACreature()
+    {
+        var game = Started("Mountain", new AlternativeAgent());
+        Lands(game, "Mountain", 2);
+        var bears = Put(game, Cards.Vanilla("Bears", "{1}{G}", 2, 2), 0);
+        var rollicker = Put(game, Cards.Named("Nyxborn Rollicker"), 0, Zone.Hand);
+
+        game.PlayTurn(new PlayerId(0));
+
+        Assert.Equal(bears, game.State.Object(rollicker).AttachedTo);
+        Assert.False(Characteristics.Of(game.State, game.State.Object(rollicker)).IsCreature);
+        Assert.Equal(3, Characteristics.Of(game.State, game.State.Object(bears)).Power);
+
+        game.MoveToZone(bears, Zone.Graveyard);
+        game.CheckStateAndTriggers();
+
+        Assert.Equal(Zone.Battlefield, game.State.Object(rollicker).Zone);
+        Assert.True(Characteristics.Of(game.State, game.State.Object(rollicker)).IsCreature);
+    }
 }

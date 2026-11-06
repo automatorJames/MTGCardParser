@@ -963,7 +963,9 @@ public sealed partial class Game
         var item = State.Stack[^1];
         Emit(new ResolutionBegan(item.Id));
 
-        if (item.Targets.Count > 0 && item.Targets.All(x => !TargetStillLegal(x)))
+        // A bestowed aura whose creature is gone resolves as a creature instead.
+        var bestowed = item.Spell is { } bestowId && State.Object(bestowId)?.WasCastWith("Bestowed") == true;
+        if (item.Targets.Count > 0 && item.Targets.All(x => !TargetStillLegal(x)) && !bestowed)
         {
             Emit(new Fizzled(item.Id));
             if (item.Spell is { } fizzledSpell)
@@ -973,7 +975,7 @@ public sealed partial class Game
 
         if (item.Spell is { } spellId && State.Object(spellId) is { } spell && spell.Card.IsPermanentCard)
         {
-            var host = spell.Card.IsAura ? item.Targets.FirstOrDefault(x => x.IsObject).Object : null;
+            var host = spell.Card.IsAura || bestowed ? item.Targets.FirstOrDefault(x => x.IsObject && TargetStillLegal(x)).Object : null;
             MoveToZone(spellId, Zone.Battlefield, item.Controller, attachTo: host);
             Emit(new Resolved(item.Id));
             return;

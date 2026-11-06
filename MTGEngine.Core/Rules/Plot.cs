@@ -25,9 +25,15 @@ public sealed partial class Game
     /// <summary>The alternative index that marks casting for an awaken cost.</summary>
     const int AwakenCast = -13;
 
+    /// <summary>The alternative index that marks casting for a bestow cost.</summary>
+    const int BestowCast = -14;
+
+    /// <summary>A bestowed spell's target: a creature it will enchant.</summary>
+    static readonly TargetSlot _bestowSlot = new(new ObjectSelector(Quantifier.Target, new ObjectFilter(Kinds: [new Term("Creature", "CardType")])), null, false, 1);
+
     /// <summary>The casting keywords that replace the mana cost when cast from the hand, with their indices and the option a spell cast that way records.</summary>
     static readonly (string Keyword, int Index, string Option)[] _keywordCasts =
-        [("Evoke", EvokeCast, "Evoked"), ("Dash", DashCast, "Dashed"), ("Warp", WarpCast, "Warped"), ("Awaken", AwakenCast, "Awakened")];
+        [("Evoke", EvokeCast, "Evoked"), ("Dash", DashCast, "Dashed"), ("Warp", WarpCast, "Warped"), ("Awaken", AwakenCast, "Awakened"), ("Bestow", BestowCast, "Bestowed")];
 
     /// <summary>Exiles a warped permanent at the end step; its owner may cast it from exile on a later turn.</summary>
     public void ExileForLater(ObjectId id)
@@ -48,7 +54,8 @@ public sealed partial class Game
     IEnumerable<LegalAction> KeywordCastActions(GameObject obj, PlayerId player)
     {
         foreach (var (keyword, index, _) in _keywordCasts)
-            if (KeywordCost(obj.Card, keyword) is { } cost && AdditionalPayable(cost, player, obj.Id, 0) && KeywordCastPayable(obj, player, cost))
+            if (KeywordCost(obj.Card, keyword) is { } cost && AdditionalPayable(cost, player, obj.Id, 0) && KeywordCastPayable(obj, player, cost)
+                && (index != BestowCast || TargetsAvailable([_bestowSlot], player, obj.Id)))
                 yield return new CastSpell(obj.Id, 0, Alternative: index);
     }
 

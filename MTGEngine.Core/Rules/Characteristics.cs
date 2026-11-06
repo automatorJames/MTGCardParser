@@ -94,6 +94,12 @@ public sealed record Characteristics(
         var abilities = card.Abilities.ToBuilder();
         var types = card.Types;
         var subtypes = card.Subtypes;
+        // Bestowed and attached, it's an aura, not a creature; when what it enchants leaves, it's a creature again.
+        if (obj.Zone == Zone.Battlefield && obj.AttachedTo is not null && obj.WasCastWith("Bestowed"))
+        {
+            types = types.Remove("Creature");
+            subtypes = subtypes.Add("Aura");
+        }
         var colors = card.Colors;
         var lost = false;
 
