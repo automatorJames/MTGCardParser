@@ -3,7 +3,14 @@ namespace MTGEngine.Core;
 /// <summary>Keyword actions as effects: scry, surveil, investigate, bolster, proliferate, explore, adapt, monstrosity, populate.</summary>
 public static class KeywordActions
 {
-    public static readonly HashSet<string> Supported = ["Scry", "Surveil", "Investigate", "Bolster", "Proliferate", "Explore", "Adapt", "Monstrosity", "Populate", "Fateseal", "Connive", "Learn", "Clash", "Discover", "Manifest", "ManifestDread", "Cascade", "Detain", "Incubate"];
+    public static readonly HashSet<string> Supported = ["Scry", "Surveil", "Investigate", "Bolster", "Proliferate", "Explore", "Adapt", "Monstrosity", "Populate", "Fateseal", "Connive", "Learn", "Clash", "Discover", "Manifest", "ManifestDread", "Cascade", "Detain", "Incubate", "Earthbend"];
+
+    /// <summary>Earthbend's target, which the keyword names without a selector of its own: "target land you control".</summary>
+    public static readonly ObjectSelector EarthbendTarget = new(Quantifier.Target, new ObjectFilter(Kinds: [new Term("Land", "CardType")], Controller: new Controlled(new PlayerSelector(PlayerKind.You))));
+
+    /// <summary>What an earthbent land does when it dies or is exiled: returns to the battlefield tapped.</summary>
+    static readonly TriggeredAbility _earthbentReturn = new(new ObjectEvent(new Self(), ["Dies", "IsPutIntoExileFromTheBattlefield"]),
+        new ChangeZone(new Self(), new ZoneRef(nameof(Zone.Battlefield)), Tapped: true));
 
     public static EffectContext Execute(KeywordAction action, EffectContext ctx)
     {
@@ -77,6 +84,21 @@ public static class KeywordActions
                     if (ctx.Source is { } adapting && ctx.State.Object(adapting) is { } creature && creature.CountersOf("+1/+1") == 0)
                         game.Emit(new CountersChanged(adapting, "+1/+1", amount));
                     break;
+                // Earthbend N: target land you control becomes a 0/0 creature with haste that's still a land, with N +1/+1
+                // counters; when it dies or is exiled, it returns to the battlefield tapped.
+                case "Earthbend":
+                {
+                    if (!ctx.TargetsBySelector.TryGetValue(EarthbendTarget, out var lands) || lands.FirstOrDefault(x => x.IsObject) is not { IsObject: true } land
+                        || ctx.State.Object(land.Object.Value) is not { Zone: Zone.Battlefield })
+                        break;
+                    var id = land.Object.Value;
+                    Interpreter.Execute(new Animate(new Self(), new Fixed(0), new Fixed(0), Types: ["Creature"], Keywords: [new KeywordInstance("Haste")], InAddition: true), ctx with { Source = id });
+                    game.Emit(new TemporaryEffectAdded(new TemporaryEffect(id, 0, 0, [], null, Abilities: [_earthbentReturn])));
+                    if (amount > 0)
+                        game.Emit(new CountersChanged(id, "+1/+1", amount));
+                    ctx = ctx with { Last = [land], Affected = [land] };
+                    break;
+                }
                 // Detain: until your next turn, the permanents can't attack or block and their activated abilities can't be activated.
                 case "Detain" when action.Objects is { } detained:
                 {

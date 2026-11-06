@@ -444,4 +444,27 @@ public sealed class EngineRoundTwentyThreeTests
 
         Assert.Equal(17, game.P0().Library.Count);
     }
+
+    [Fact]
+    public void EarthbendingLessonAnimatesALandThatComesBack()
+    {
+        var game = Started("Forest", new GreedyAgent(attacks: false));
+        Lands(game, "Forest", 4);
+        Put(game, Cards.Named("Earthbending Lesson"), 0, Zone.Hand);
+
+        game.PlayTurn(new PlayerId(0));
+
+        var land = Assert.Single(game.BattlefieldOf(0), x => x.CountersOf("+1/+1") > 0);
+        var traits = Characteristics.Of(game.State, land);
+        Assert.True(traits.IsCreature);
+        Assert.Contains("Land", traits.Types);
+        Assert.Equal(4, traits.Power);
+
+        game.Destroy(land.Id);
+        game.CheckStateAndTriggers();
+        game.ResolveStack();
+
+        Assert.Equal(Zone.Battlefield, game.State.Object(land.Id).Zone);
+        Assert.True(game.State.Object(land.Id).Tapped);
+    }
 }

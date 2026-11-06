@@ -74,7 +74,7 @@ public static class KeywordAbilities
     }
 
     /// <summary>The keyword actions a spell's keyword line does as it resolves ("scry 1.").</summary>
-    public static readonly ImmutableHashSet<string> Actions = ["Scry", "Surveil", "Investigate", "Proliferate", "Fateseal", "Populate", "Bolster", "Explore", "Adapt", "Learn", "Clash", "Incubate"];
+    public static readonly ImmutableHashSet<string> Actions = ["Scry", "Surveil", "Investigate", "Proliferate", "Fateseal", "Populate", "Bolster", "Explore", "Adapt", "Learn", "Clash", "Incubate", "Earthbend"];
 
     /// <summary>The abilities each keyword line stands for, after the line; a spell's keyword actions as part of the spell.</summary>
     public static IEnumerable<Ability> Expand(IEnumerable<Ability> abilities, bool spell)

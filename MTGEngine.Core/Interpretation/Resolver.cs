@@ -378,6 +378,9 @@ public static class TargetSlots
                         yield return new TargetSlot(objects, objects.Binding, objects.UpTo || objects.Count is Special { Kind: "AnyNumber" },
                             objects.Count switch { Special { Kind: "AnyNumber" } => int.MaxValue, Special { Kind: "OneOrTwo" } => 2, Special { Kind: "OneTwoOrThree" } => 3, Fixed { Value: var n } => n, _ => 1 });
                         break;
+                    case KeywordAction { Actions: [{ Keyword: "Earthbend" }, ..] } when Fresh(KeywordActions.EarthbendTarget, null):
+                        yield return new TargetSlot(KeywordActions.EarthbendTarget, null, false, 1);
+                        break;
                     // "Distribute three +1/+1 counters among one, two, or three target creatures": one slot for up to that many.
                     case DistributeCounters { Targeted: true, Among: ObjectSelector among } distribute when Fresh(among, among.Binding):
                         yield return new TargetSlot(among, among.Binding, false, distribute.Range switch { "OneOrTwo" => 2, "OneTwoOrThree" => 3, _ => int.MaxValue });

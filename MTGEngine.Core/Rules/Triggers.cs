@@ -11,14 +11,20 @@ public static class Triggers
     {
         // Permanents on the battlefield now, plus the object that just left it (its own leaves/dies triggers look back).
         var sources = after.Battlefield.Concat(after.Emblems).ToList();
+        GameObject leaving = null;
         if (evt is ZoneMoved { From: Zone.Battlefield } left && before.Object(left.Object) is { } leaver)
+        {
             sources.Add(leaver);
+            leaving = leaver;
+        }
 
         foreach (var source in sources)
         {
-            if (after.Temporary.Any(x => x.Target == source.Id && x.LosesAbilities))
+            // What just left has the abilities it had there, granted ones too ("when it dies or is exiled, return it").
+            var judged = ReferenceEquals(source, leaving) ? before : after;
+            if (judged.Temporary.Any(x => x.Target == source.Id && x.LosesAbilities))
                 continue;
-            foreach (var ability in Characteristics.AbilitiesOf(after, source).OfType<TriggeredAbility>())
+            foreach (var ability in Characteristics.AbilitiesOf(judged, source).OfType<TriggeredAbility>())
                 if (ability.Trigger is CombatEncounterEvent encounter)
                 {
                     foreach (var other in Encounters(encounter, evt, source, after))
