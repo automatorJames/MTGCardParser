@@ -127,6 +127,20 @@ public sealed partial class Game
             }
 
         mana = mana.Plus(_modeCost);
+        // Splice onto Arcane: as an Arcane spell is cast, cards with splice in the hand may be revealed and their splice
+        // costs paid to add their effects to it (they stay in the hand).
+        if (!card.IsPermanentCard && card.Subtypes.Contains("Arcane"))
+            foreach (var spliced in State.Player(player).Hand.Where(h => h != id).Select(State.Object).Where(x => x is not null).ToList())
+                if (OptionalCosts(spliced.Card, "Splice").FirstOrDefault() is { } splice
+                    && ManaPayment.CanPay(State, player, CostToCast(obj, player, mana.Plus(splice), null), HasConvoke(card), new ManaPayment.Purpose(Spell: obj))
+                    && Decide(new YesNo(player, $"Splice {spliced.Card.Name} onto {card.Name} for {splice}?")).Yes)
+                {
+                    mana = mana.Plus(splice);
+                    foreach (var added in spliced.Card.SpellEffects)
+                        if (Specialize(added, options) is { } specializedAdded)
+                            effects.Add(Rebound(ResolveModes(specializedAdded, player, source: id).Effect, $"splice{spliced.Id.Value}"));
+                    options.Add("Spliced");
+                }
         // Bestowed, it's an aura spell with enchant creature.
         var slots = options.Contains("FaceDown") ? [] : options.Contains("Bestowed") ? [_bestowSlot] : card.IsPermanentCard ? SpellSlots(card) : TargetSlots.Of(effects).ToList();
         var targets = ChooseTargetsFor(slots, player, id, x);
@@ -490,6 +504,16 @@ public sealed partial class Game
         return (Effect)MTGRulesIR.Lowering.SelfReferenceRepair.Rewrite(kept, node =>
             node is Reference { Binding: { } binding } && targets.TryGetValue(binding, out var target) && !asked.Contains(binding) && placed.Add(binding) ? target : node);
     }
+
+    /// <summary>An effect with its bindings renamed under <paramref name="prefix"/>, so they can't meet another effect's ("#1" in a spliced card and in the spell).</summary>
+    static Effect Rebound(Effect effect, string prefix) =>
+        (Effect)MTGRulesIR.Lowering.SelfReferenceRepair.Rewrite(effect, node => node switch
+        {
+            ObjectSelector { Binding: { } b } selector => selector with { Binding = $"{prefix}{b}" },
+            PlayerSelector { Binding: { } b } player => player with { Binding = $"{prefix}{b}" },
+            Reference { Binding: { } b } reference => reference with { Binding = $"{prefix}{b}" },
+            _ => node,
+        });
 
     public static Effect Specialize(Effect effect, ICollection<string> options)
     {

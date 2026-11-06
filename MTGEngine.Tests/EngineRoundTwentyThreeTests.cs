@@ -557,4 +557,18 @@ public sealed class EngineRoundTwentyThreeTests
         Assert.Equal(Zone.Battlefield, game.State.Object(fallen).Zone);
         Assert.Equal(1, game.State.Object(fallen).CountersOf("+1/+1"));
     }
+
+    [Fact]
+    public void GlacialRaySplicedOntoGlacialRayDealsDamageTwice()
+    {
+        var game = Started("Mountain", new GreedyAgent(attacks: false));
+        Lands(game, "Mountain", 4);
+        var cast = Put(game, Cards.Named("Glacial Ray"), 0, Zone.Hand);
+        var spliced = Put(game, Cards.Named("Glacial Ray"), 0, Zone.Hand);
+
+        game.PlayTurn(new PlayerId(0));
+
+        Assert.Equal(16, game.P1().Life);
+        Assert.Single(new[] { cast, spliced }, x => game.State.Object(x).Zone == Zone.Hand);
+    }
 }
