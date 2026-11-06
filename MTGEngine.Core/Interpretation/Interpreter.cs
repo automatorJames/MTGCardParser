@@ -1059,7 +1059,7 @@ public static class Interpreter
                             _ => state.InZone(Zone.Library, searcher),
                         };
                         var chooser = search.Searcher is PlayerSelector { Kind: PlayerKind.TargetPlayer or PlayerKind.TargetOpponent } || search.Zones.Contains("Hand") ? ctx.Controller : searcher;
-                        var library = searched.Where(x => Filters.Matches(state, (selector.Filter ?? new ObjectFilter()) with { Zone = null }, x with { Zone = Zone.Battlefield }, searcher, ctx.Source, ctx: ctx) || Filters.Matches(state, selector.Filter, x, searcher, ctx.Source, ctx: ctx)).Select(x => TargetRef.Of(x.Id)).ToImmutableList();
+                        var library = Filters.DistinctBy(searched.Where(x => Filters.Matches(state, (selector.Filter ?? new ObjectFilter()) with { Zone = null }, x with { Zone = Zone.Battlefield }, searcher, ctx.Source, ctx: ctx) || Filters.Matches(state, selector.Filter, x, searcher, ctx.Source, ctx: ctx)), selector.Filter, state, x => x).Select(x => TargetRef.Of(x.Id)).ToImmutableList();
                         var take = Math.Min(count, library.Count);
                         if (take == 0)
                             continue;

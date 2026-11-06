@@ -105,7 +105,7 @@ public static class Resolver
                 return ctx.Source is { } attachment && state.Object(attachment)?.AttachedTo is { } host ? [host] : [];
             case ObjectSelector pooled when PoolOf(pooled, ctx) is { } pool:
             {
-                var matching = pool.Where(id => state.Object(id) is { } obj && PoolMatches(pooled.Filter, obj, ctx)).ToImmutableList();
+                var matching = Filters.DistinctBy(pool.Where(id => state.Object(id) is { } obj && PoolMatches(pooled.Filter, obj, ctx)), pooled.Filter, state, state.Object).ToImmutableList();
                 var wanted = pooled.Quantifier switch
                 {
                     Quantifier.Count => Quantities.Evaluate(pooled.Count, ctx),
@@ -137,7 +137,7 @@ public static class Resolver
             case ObjectSelector selector2:
             {
                 var position = selector2.Filter?.Qualifiers?.FirstOrDefault(q => q.Vocabulary == "Position")?.Quality;
-                var matches = Candidates(selector2.Filter, ctx).Where(obj => Filters.Matches(state, selector2.Filter, obj, ctx.Controller, ctx.Source, selector2.Other ? ctx.Source : null, ctx: ctx)).Select(x => x.Id).ToImmutableList();
+                var matches = Filters.DistinctBy(Candidates(selector2.Filter, ctx).Where(obj => Filters.Matches(state, selector2.Filter, obj, ctx.Controller, ctx.Source, selector2.Other ? ctx.Source : null, ctx: ctx)), selector2.Filter, state, x => x).Select(x => x.Id).ToImmutableList();
                 if (position is "Top" or "Bottom" && selector2.Filter?.Zone?.Zone == nameof(Zone.Library))
                 {
                     var owners = selector2.Filter.Zone.Owner is null ? [ctx.Controller] : Players(selector2.Filter.Zone.Owner, ctx);

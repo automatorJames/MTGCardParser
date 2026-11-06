@@ -237,6 +237,18 @@ public static class Filters
 
     [ThreadStatic] static int _comparing;
 
+    /// <summary>"Creatures with different powers", "cards with different names": one of each value, when the filter asks for it.</summary>
+    public static IEnumerable<T> DistinctBy<T>(IEnumerable<T> items, ObjectFilter filter, GameState state, Func<T, GameObject> objectOf)
+    {
+        if (filter?.With?.OfType<Distinct>().FirstOrDefault() is not { } distinct)
+            return items;
+        return items.Where(x => objectOf(x) is not null).DistinctBy(x =>
+        {
+            var obj = objectOf(x);
+            return distinct.Characteristic == "Name" ? obj.Card.Name : CharacteristicValue(distinct.Characteristic, obj, Characteristics.Of(state, obj)).ToString();
+        });
+    }
+
     static readonly ImmutableHashSet<string> _outlaws = ["Assassin", "Mercenary", "Pirate", "Rogue", "Warlock"];
 
     static bool PredicateMatches(GameState state, Predicate predicate, GameObject obj, Characteristics traits, PlayerId you, ObjectId? source, EffectContext ctx)
@@ -254,6 +266,9 @@ public static class Filters
                     return false;
                 return bound.Characteristics.All(characteristic => Compare(CharacteristicValue(characteristic, obj, traits), bound.Comparison, threshold.Value));
             }
+            // "With different names / powers": a property of the set, applied where the set is resolved (DistinctBy).
+            case Distinct:
+                return true;
             // "With power less than this creature's power", "with toughness greater than its power".
             case CharacteristicCompared compared:
             {

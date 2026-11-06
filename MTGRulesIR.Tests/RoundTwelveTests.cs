@@ -81,4 +81,13 @@ public sealed class RoundTwelveTests(GrammarFixture fixture)
 
         Assert.IsType<Self>(Assert.Single(MTGRulesIR.Lowering.NodeWalker.Nodes(ability).OfType<MustBlock>()).Attacker);
     }
+
+    [Fact]
+    public void ThreeOrMoreIsAtLeastThree()
+    {
+        var ability = fixture.LowerAbility("this creature gets +2/+2 as long as you control three or more artifacts.");
+
+        var bound = Assert.IsType<Bound>(Assert.Single(MTGRulesIR.Lowering.NodeWalker.Nodes(ability).OfType<ObjectSelector>(), x => x.Count is Bound).Count);
+        Assert.Equal(Comparison.GreaterOrEqual, bound.Comparison);
+    }
 }

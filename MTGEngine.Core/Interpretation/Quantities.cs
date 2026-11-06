@@ -275,6 +275,9 @@ public static class Conditions
             {
                 var players = Resolver.Players(controls.Player, ctx);
                 var objects = Resolver.Objects(controls.Objects, ctx).Select(state.Object).Where(x => x is { Zone: Zone.Battlefield }).ToList();
+                // "Three or more creatures with different powers": distinct among the player's own.
+                if (controls.Objects is ObjectSelector { Filter: { } distinct } && distinct.With?.Any(x => x is Distinct) == true)
+                    objects = Filters.DistinctBy(state.Battlefield.Where(x => players.Contains(x.Controller) && Filters.Matches(state, distinct, x, ctx.Controller, ctx.Source, ctx: ctx)), distinct, state, x => x).ToList();
                 var count = objects.Count(x => players.Contains(x.Controller));
                 var holds = controls.Objects is ObjectSelector { Count: Bound bound } && Quantities.Evaluate(bound.Value, ctx) is { } threshold
                     ? Filters.Compare(count, bound.Comparison, threshold)

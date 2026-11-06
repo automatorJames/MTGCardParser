@@ -212,7 +212,7 @@ public sealed partial class Lowerer
         // Conditions.
         Rule<G.PlayerControls>((g, ctx) => new Controls(Player(g.Controller), LowerAs<Selector>(g.Permanent, ctx)));
         Rule<G.PermanentsThreshold>((g, ctx) =>
-            Group(g.Permanents, Quantifier.Count, ctx, other: g.Other, count: new Bound(QuantityOf(g.Count), g.Bound.ToString().Contains("More") || g.Bound.ToString().Contains("Greater") ? Comparison.GreaterOrEqual : Comparison.LessOrEqual)));
+            Group(g.Permanents, Quantifier.Count, ctx, other: g.Other, count: new Bound(QuantityOf(g.Count), g.Bound == G.CountBound.AtLeast ? Comparison.GreaterOrEqual : Comparison.LessOrEqual)));
         Rule<G.AtLeastPermanents>((g, ctx) =>
             Group(g.Kinds, Quantifier.Count, ctx, other: ctx.TextOf(g)?.Contains(" other ") == true, count: new Bound(QuantityOf(g.Count), Comparison.GreaterOrEqual)));
         Rule<G.NoPermanents>((g, ctx) =>

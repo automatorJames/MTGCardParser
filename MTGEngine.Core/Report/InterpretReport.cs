@@ -139,7 +139,7 @@ public static class InterpreterSupport
 
     static readonly HashSet<Type> _predicates =
     [
-        typeof(HasKeywords), typeof(HasStats), typeof(CharacteristicBound), typeof(CharacteristicCompared), typeof(HasExtreme), typeof(Related), typeof(QualifierChoice), typeof(QualifiedKind),
+        typeof(HasKeywords), typeof(HasStats), typeof(CharacteristicBound), typeof(CharacteristicCompared), typeof(HasExtreme), typeof(Distinct), typeof(Related), typeof(QualifierChoice), typeof(QualifiedKind),
         typeof(CastBy), typeof(WithCounters), typeof(Satisfying), typeof(ChosenBy), typeof(OfChosen), typeof(Targeting), typeof(SharesCharacteristic), typeof(Named), typeof(InCombatWith),
     ];
 

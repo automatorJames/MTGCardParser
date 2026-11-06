@@ -176,4 +176,22 @@ public sealed class EngineRoundTwentyTests
         Assert.Equal(Zone.Exile, game.State.Object(inHand).Zone);
         Assert.Equal(Zone.Exile, game.State.Object(inGraveyard).Zone);
     }
+
+    [Theory]
+    [InlineData(3, 0, true)]
+    [InlineData(2, 3, false)]
+    public void CandlegroveWitchFliesWithCoven(int mine, int theirs, bool flies)
+    {
+        var game = Started("Plains", new GreedyAgent(attacks: false));
+        var witch = Put(game, Cards.Named("Candlegrove Witch"), 0);
+        Put(game, Cards.Vanilla("Elk", "{1}", 1, 1), 0);
+        if (mine == 3)
+            Put(game, Cards.Vanilla("Ogre", "{3}", 3, 3), 0);
+        if (theirs == 3)
+            Put(game, Cards.Vanilla("Ogre", "{3}", 3, 3), 1);
+
+        game.PlayTurn(new PlayerId(0));
+
+        Assert.Equal(flies, game.Log.OfType<TemporaryEffectAdded>().Any(x => x.Effect.Target == witch && x.Effect.Keywords.Contains("Flying")));
+    }
 }
