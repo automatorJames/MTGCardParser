@@ -446,8 +446,10 @@ public sealed partial class Game
             if (!card.Abilities.OfType<ActivationLimits>().Where(x => x.ForCasting).SelectMany(x => x.Timings).All(t => TimingAllows(t, obj, player)))
                 continue;
             // A spell whose targets depend on x ("with mana value x or less") is judged with the largest x it could be cast for.
-            var largestX = card.ManaCost.X > 0 ? PayableX(obj, player, ManaPayment.MaxX(state, player, CostToCast(obj, player, card.ManaCost, null))) : 0;
-            if (!TargetsAvailable(SpellSlots(card), player, id, largestX) || !ModesAvailable(card, player, id))
+            var spellSlots = SpellSlots(card);
+            var largestX = card.ManaCost.X > 0 && spellSlots.Any(slot => MTGRulesIR.Lowering.NodeWalker.Nodes(slot.Selector).Any(n => n is Variable))
+                ? PayableX(obj, player, ManaPayment.MaxX(state, player, CostToCast(obj, player, card.ManaCost, null))) : 0;
+            if (!TargetsAvailable(spellSlots, player, id, largestX) || !ModesAvailable(card, player, id))
                 continue;
             if (CanAffordToCast(obj, player))
                 actions.Add(new CastSpell(id, card.ManaCost.X > 0 ? PayableX(obj, player, ManaPayment.MaxX(state, player, CostToCast(obj, player, card.ManaCost, null))) : 0));
