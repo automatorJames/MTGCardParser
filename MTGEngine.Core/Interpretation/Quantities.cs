@@ -55,6 +55,24 @@ public static class Quantities
             // Strive: "for each target beyond the first", of the targets chosen as the spell is cast.
             case CountOf { Of: ObjectSelector { Filter: { Kinds: [{ Value: nameof(ObjectKind.Target) }], Qualifiers: [{ Quality: nameof(Distinction.BeyondTheFirst) }] } } }:
                 return Math.Max(0, ctx.TargetsBySelector.Values.Sum(x => x.Count) - 1);
+            // "The number of cards you've drawn this turn", "other spells you've cast this turn", "permanents you've sacrificed this turn".
+            case CountOf { Of: ObjectSelector { Filter.With: { } with } acted } when with.OfType<ActedOn>().FirstOrDefault() is { Span: "ThisTurn" or null } actedOn:
+            {
+                var players = Resolver.Players(actedOn.By, ctx).ToHashSet();
+                var rest = acted.Filter with { Kinds = null, Zone = null, With = with.Where(x => x is not ActedOn).ToList() };
+                bool Fits(ObjectId? id) =>
+                    id is { } some && ctx.State.Object(some) is { } obj && !(acted.Other && some == ctx.Source)
+                    && Filters.Matches(ctx.State, rest, obj with { Zone = Zone.Battlefield }, ctx.Controller, ctx.Source, ctx: ctx);
+                var events = ctx.State.ThisTurnEventList;
+                return actedOn.Action switch
+                {
+                    "Cast" => events.OfType<SpellCast>().Count(x => players.Contains(x.Item.Controller) && Fits(x.Item.Spell)),
+                    "Drawn" => events.OfType<Drew>().Count(x => players.Contains(x.Player) && x.Card is not null),
+                    "Discarded" or "CycledOrDiscarded" => events.OfType<Discarded>().Count(x => players.Contains(x.Player) && Fits(x.Card)),
+                    "Sacrificed" => events.OfType<Sacrificed>().Count(x => players.Contains(x.Player) && Fits(x.Object)),
+                    _ => null,
+                };
+            }
             case CountOf count:
                 return Resolver.Targets(count.Of, ctx).Count;
             case CountersItHad had:

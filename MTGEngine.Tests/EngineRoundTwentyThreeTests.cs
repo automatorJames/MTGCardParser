@@ -404,4 +404,44 @@ public sealed class EngineRoundTwentyThreeTests
         Assert.Equal(Zone.Graveyard, game.State.Object(land).Zone);
         Assert.Equal(17, game.P1().Life);
     }
+
+    [Fact]
+    public void OphidianDrawsInsteadOfDealingDamage()
+    {
+        var game = Started("Island", new GreedyAgent());
+        Put(game, Cards.Named("Ophidian"), 0);
+
+        game.PlayTurn(new PlayerId(0));
+
+        Assert.Equal(20, game.P1().Life);
+        Assert.Equal(19, game.P0().Library.Count);
+    }
+
+    [Fact]
+    public void PoliticalTrickeryExchangesLands()
+    {
+        var game = Started("Island", new GreedyAgent(attacks: false));
+        Lands(game, "Island", 3);
+        var theirs = Put(game, Cards.Basic("Plains"), 1);
+        Put(game, Cards.Named("Political Trickery"), 0, Zone.Hand);
+
+        game.PlayTurn(new PlayerId(0));
+
+        Assert.Equal(new PlayerId(0), game.State.Object(theirs).Controller);
+        Assert.Single(game.BattlefieldOf(1));
+    }
+
+    [Fact]
+    public void ChangeOfFortuneDrawsForEachCardDiscardedThisTurn()
+    {
+        var game = Started("Mountain", new GreedyAgent(attacks: false));
+        Lands(game, "Mountain", 4);
+        for (var i = 0; i < 3; i++)
+            Put(game, Cards.Vanilla("Colossus", "{9}", 9, 9), 0, Zone.Hand);
+        Put(game, Cards.Named("Change of Fortune"), 0, Zone.Hand);
+
+        game.PlayTurn(new PlayerId(0));
+
+        Assert.Equal(17, game.P0().Library.Count);
+    }
 }

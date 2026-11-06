@@ -497,6 +497,25 @@ public static class Interpreter
             }
 
             // "Move a +1/+1 counter from target creature onto a second target creature", "move all counters from this onto target creature".
+            case AssignsNoCombatDamage noDamage when noDamage.Duration is ThisTurn or UntilPhase { Phase.Phase: "EndOfTurn" }:
+            {
+                foreach (var id in noDamage.Objects is null or Self ? (ctx.Source is { } own ? [own] : []) : Resolver.Objects(noDamage.Objects, ctx))
+                    game.Emit(new TemporaryEffectAdded(new TemporaryEffect(id, 0, 0, [], state.Turn, Restrictions: ["AssignCombatDamage"])));
+                return ctx;
+            }
+
+            // "Exchange control of target land you control and target land an opponent controls": each goes to the other's controller.
+            case ExchangeControl exchange:
+            {
+                var objects = exchange.Objects.SelectMany(x => x is Self ? (ctx.Source is { } self ? [self] : []) : Resolver.Objects(x, ctx))
+                    .Select(x => game.State.Object(x)).Where(x => x is { Zone: Zone.Battlefield }).Distinct().ToList();
+                if (objects is not [var first, var second] || first.Controller == second.Controller)
+                    return ctx;
+                game.GainControl([first.Id], second.Controller, null, ctx);
+                game.GainControl([second.Id], first.Controller, null, ctx);
+                return ctx with { Affected = [TargetRef.Of(first.Id), TargetRef.Of(second.Id)] };
+            }
+
             case MoveCounters move:
             {
                 var from = move.From is null or Self ? (ctx.Source is { } own ? [own] : []) : Resolver.Objects(move.From, ctx);

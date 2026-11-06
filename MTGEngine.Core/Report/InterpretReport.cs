@@ -104,7 +104,7 @@ public static class InterpreterSupport
         typeof(ChooseEffect), typeof(BecomesAspect), typeof(PreventDamage), typeof(RedirectDamage), typeof(CostModification),
         typeof(PlayCard), typeof(CantBeRegenerated), typeof(CantBeTargeted), typeof(MustCombat), typeof(SetStats), typeof(Replacement),
         typeof(Otherwise), typeof(StillOfKind), typeof(Remains), typeof(RevealUntil), typeof(CantPlay), typeof(GetEnergy), typeof(CanAsThough), typeof(Convoke),
-        typeof(CopySpell), typeof(DistributeCounters), typeof(MoveCounters), typeof(MustBlock), typeof(MustBeBlocked), typeof(DoubleCounters), typeof(DoubleStats), typeof(SwitchStats), typeof(ChangeTargets), typeof(CantBeActivated), typeof(CanBlock), typeof(CreateEmblem),
+        typeof(CopySpell), typeof(DistributeCounters), typeof(MoveCounters), typeof(AssignsNoCombatDamage), typeof(ExchangeControl), typeof(MustBlock), typeof(MustBeBlocked), typeof(DoubleCounters), typeof(DoubleStats), typeof(SwitchStats), typeof(ChangeTargets), typeof(CantBeActivated), typeof(CanBlock), typeof(CreateEmblem),
         typeof(FlipCoin), typeof(RollDice), typeof(CastAsThoughFlash), typeof(MustBlock), typeof(MayNotUntap), typeof(Skip), typeof(TurnFace),
         typeof(GainClassLevel), typeof(BecomeCopy), typeof(MayPlayFrom), typeof(ManaRestriction), typeof(ExtraLandPlays),
     ];
@@ -139,7 +139,7 @@ public static class InterpreterSupport
 
     static readonly HashSet<Type> _predicates =
     [
-        typeof(HasKeywords), typeof(HasStats), typeof(CharacteristicBound), typeof(CharacteristicCompared), typeof(HasExtreme), typeof(Distinct), typeof(Related), typeof(QualifierChoice), typeof(QualifiedKind),
+        typeof(HasKeywords), typeof(HasStats), typeof(CharacteristicBound), typeof(CharacteristicCompared), typeof(HasExtreme), typeof(Distinct), typeof(Related), typeof(ActedOn), typeof(QualifierChoice), typeof(QualifiedKind),
         typeof(CastBy), typeof(WithCounters), typeof(Satisfying), typeof(ChosenBy), typeof(OfChosen), typeof(Targeting), typeof(SharesCharacteristic), typeof(Named), typeof(InCombatWith),
     ];
 
@@ -344,6 +344,8 @@ public static class InterpreterSupport
             CantPlay { Verb: not ("Cast" or "Play") } cantPlay => $"CantPlay.{cantPlay.Verb}",
             CopySpell { Except: not null } => "CopySpell.Except",
             Union { Members.Count: 0 } => "Union.Empty",
+            AssignsNoCombatDamage { Duration: not (ThisTurn or UntilPhase { Phase.Phase: "EndOfTurn" }) } => "AssignsNoCombatDamage.Duration",
+            ActedOn { Action: not ("Cast" or "Drawn" or "Discarded" or "CycledOrDiscarded" or "Sacrificed") } or ActedOn { Span: not ("ThisTurn" or null) } => "ActedOn",
             DistinctCount { Aspect: not ("Color" or "Colors" or "CardType" or "CardTypes" or "CreatureType" or "CreatureTypes" or "Name" or "Names" or "BasicLandTypes" or "BasicLandType" or "ManaValues" or "ManaValue" or "PermanentTypes") } distinct => $"DistinctCount.{distinct.Aspect}",
             DistributeCounters { Targeted: false } or DistributeCounters { Among: not ObjectSelector } => "DistributeCounters.Untargeted",
             ExtraLandPlays { EachTurn: false } oneTurn when !(oneTurn.Duration is null or ThisTurn && oneTurn.Count is Fixed) => "ExtraLandPlays.Duration",

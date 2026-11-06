@@ -207,6 +207,9 @@ public sealed partial class Game
         bool Deals(GameObject obj)
         {
             var traits = Characteristics.Of(state, obj);
+            // "This creature assigns no combat damage this turn."
+            if (traits.Cant("AssignCombatDamage"))
+                return false;
             var firstStrike = traits.HasKeyword("FirstStrike");
             var doubleStrike = traits.HasKeyword("DoubleStrike");
             return first ? firstStrike || doubleStrike : doubleStrike || !firstStrike;
