@@ -29,7 +29,7 @@ public sealed record CardDefinition(
         var cost = ManaCost.Parse(info.ManaCost);
         var spell = rules.Types?.Contains("Instant") == true || rules.Types?.Contains("Sorcery") == true;
         // On an instant or sorcery, "if that creature would die this turn, exile it instead" is set up as the spell resolves.
-        var abilities = InsteadRewrite.Rewrite(Modal.Rewrite(LastingUntaps(rules.Lines.SelectMany(WithoutCastingReminders).Select(Unwrap))
+        var abilities = InsteadRewrite.Rewrite(Modal.Rewrite(LastingUntaps(rules.Lines.Select(FoldIntoMode).SelectMany(WithoutCastingReminders).Select(Unwrap))
             .Select(x => spell && x is ReplacementAbility { Effect: Replacement replacement } ? new SpellAbility(replacement) : x)
             .Select(x => spell ? x : AsStatic(x)))).ToImmutableList();
         abilities = Levels.Rewrite(KeywordAbilities.Expand(abilities, spell), stationCreature: info.Power is not null).ToImmutableList();
@@ -120,6 +120,18 @@ public sealed record CardDefinition(
                 if (MTGRulesIR.Lowering.NodeWalker.Nodes(abilities[i]).OfType<KeywordAction>().Any(x => x.Actions.All(a => KeywordActions.Supported.Contains(a.Keyword))))
                     return abilities.Take(i + 1);
         return keywordAt < 0 ? abilities : abilities.Where((ability, i) => i <= keywordAt || ability is not SpellAbility);
+    }
+
+    /// <summary>
+    /// "• Sacrifice a creature. {this} deals damage equal to that creature's power to any target.": the sentences of a
+    /// bullet after its first are part of that mode, not spell abilities that happen whichever mode is chosen.
+    /// </summary>
+    static LineRules FoldIntoMode(LineRules line)
+    {
+        if (line.Abilities is not [Mode mode, _, ..] || !line.Abilities.Skip(1).All(x => x is SpellAbility))
+            return line;
+        var effect = new Sequence([mode.Effect, .. line.Abilities.Skip(1).Cast<SpellAbility>().Select(x => x.Effect)]);
+        return line with { Abilities = [mode with { Effect = effect }] };
     }
 
     /// <summary>An ability word or flavor word only labels the ability it introduces; the engine acts on the ability.</summary>

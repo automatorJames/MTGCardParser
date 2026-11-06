@@ -12,6 +12,21 @@ public static class Interpreter
         // Steps leave what they found under bindings ("the rest" after "put one of them into your hand"), so there's always somewhere to put it.
         if (ctx.Bindings is null)
             ctx = ctx with { Bindings = new Dictionary<string, ImmutableList<TargetRef>>() };
+        var result = Run(effect, ctx);
+        // "Sacrifice a creature. … damage equal to that creature's power": what a step chose (not a target, which is
+        // known already) is what later references to its binding mean.
+        if (effect is not (null or Sequence or Conditional or Optional) && ChosenBinding(effect) is { } binding && !result.Binds.ContainsKey(binding)
+            && (result.Affected is { Count: > 0 } ? result.Affected : result.Last) is { Count: > 0 } chosen && !ReferenceEquals(chosen, ctx.Last) && !ReferenceEquals(chosen, ctx.Affected))
+            result.Binds[binding] = chosen;
+        return result;
+    }
+
+    /// <summary>The binding of the objects an effect chooses itself ("sacrifice a creature", "exile a card from your hand"), if it has one.</summary>
+    static string ChosenBinding(Effect effect) =>
+        effect.GetType().GetProperty("Objects")?.GetValue(effect) is ObjectSelector { Binding: { } binding, Quantifier: not Quantifier.Target } ? binding : null;
+
+    static EffectContext Run(Effect effect, EffectContext ctx)
+    {
         var game = ctx.Game;
         var state = ctx.State;
 

@@ -63,4 +63,31 @@ public sealed class EngineRoundTwentyThreeTests
         Assert.Equal(Zone.Graveyard, game.State.Object(shock).Zone);
         Assert.Equal(Zone.Hand, game.State.Object(bears).Zone);
     }
+
+    [Fact]
+    public void RuptureDealsTheSacrificedCreaturesPower()
+    {
+        var game = Started("Mountain", new GreedyAgent(attacks: false));
+        Lands(game, "Mountain", 3);
+        var brute = Put(game, Cards.Vanilla("Brute", "{3}", 3, 3), 0);
+        Put(game, Cards.Named("Rupture"), 0, Zone.Hand);
+
+        game.PlayTurn(new PlayerId(0));
+
+        Assert.Equal(Zone.Graveyard, game.State.Object(brute).Zone);
+        Assert.Equal(17, game.P1().Life);
+        Assert.Equal(17, game.P0().Life);
+    }
+
+    [Fact]
+    public void ScribNibblersGainsLifeForAnExiledLand()
+    {
+        var game = Started("Plains", new GreedyAgent(attacks: false));
+        Put(game, Cards.Named("Scrib Nibblers"), 0);
+
+        game.PlayTurn(new PlayerId(0));
+
+        Assert.Single(game.P1().Exile);
+        Assert.Equal(21, game.P0().Life);
+    }
 }

@@ -31,16 +31,31 @@ public static class SelfReferenceRepair
         if (spells.Count >= 2 && Repaired(spells.Select(x => ((SpellAbility)x.ability).Effect).ToList()) is { } repaired)
             for (var n = 0; n < spells.Count; n++)
                 result[spells[n].i] = ((SpellAbility)spells[n].ability) with { Effect = repaired[n] };
-        // "Put a +1/+1 counter on target creature you control if it's legendary": an "it's" nothing before it named is the target.
-        return result.Select(ability => (Ability)Rewrite(ability, node =>
-            node is Conditional { If: { } condition, Then: { } then } conditional && TargetOf(then) is { } target && UnboundSubject(condition)
-                ? conditional with { If = (Condition)Rewrite(condition, x => x switch
+        return result.Select(ability => (Ability)Rewrite(ability, node => node switch
+        {
+            // "Exile the top card of target player's library. if it's a land card": "it" is a card, not the player.
+            ObjectIs { Object: Reference { Antecedent: "player" or "opponent" } } objectIs => objectIs with { Object = _thoseCards },
+            IsKind { Object: Reference { Antecedent: "player" or "opponent" } } isKind => isKind with { Object = _thoseCards },
+            // "Put a +1/+1 counter on target creature you control if it's legendary", "… on equipped creature if it's
+            // white": an "it's" nothing before it named is the object the effect names.
+            Conditional { If: { } condition, Then: { } then } conditional when UnboundSubject(condition) && SubjectOf(then) is { } subject =>
+                conditional with { If = (Condition)Rewrite(condition, x => x switch
                 {
-                    ObjectIs { Object: Reference { Binding: null } it } objectIs => objectIs with { Object = it with { Binding = target } },
-                    IsKind { Object: Reference { Binding: null } it } isKind => isKind with { Object = it with { Binding = target } },
+                    ObjectIs { Object: Reference { Binding: null } } objectIs => objectIs with { Object = subject },
+                    IsKind { Object: Reference { Binding: null } } isKind => isKind with { Object = subject },
                     _ => x,
-                }) }
-                : node)).ToList();
+                }) },
+            _ => node,
+        })).ToList();
+    }
+
+    /// <summary>What an effect acts on, as a condition about "it" would name it: its one target (by binding), or the one permanent it names ("equipped creature").</summary>
+    static Selector SubjectOf(Effect effect)
+    {
+        if (TargetOf(effect) is { } target)
+            return new Reference(target, "it");
+        var named = NodeWalker.Nodes(effect).OfType<ObjectSelector>().Where(x => x.Quantifier is Quantifier.Attached).ToList();
+        return named is [var only] ? only : null;
     }
 
     static bool UnboundSubject(Condition condition) =>

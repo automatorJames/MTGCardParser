@@ -336,7 +336,7 @@ public static class Conditions
                 var objects = Resolver.Objects(kind.Object, ctx).Select(state.Object).Where(x => x is not null).ToList();
                 // "If it's a land card" about what was revealed, when nothing was: it isn't.
                 if (objects.Count == 0)
-                    return kind.Object is ObjectSelector { Quantifier: Quantifier.Those } ? kind.Negated : null;
+                    return kind.Object is ObjectSelector { Quantifier: Quantifier.Those or Quantifier.Attached } ? kind.Negated : null;
                 var holds = objects.All(obj =>
                 {
                     var traits = Characteristics.Of(state, obj);
@@ -347,8 +347,9 @@ public static class Conditions
             case ObjectIs aspect:
             {
                 var objects = Resolver.Objects(aspect.Object, ctx).Select(state.Object).Where(x => x is not null).ToList();
+                // "If it's white" about the equipped creature when nothing is equipped: it isn't.
                 if (objects.Count == 0)
-                    return null;
+                    return aspect.Object is ObjectSelector { Quantifier: Quantifier.Those or Quantifier.Attached } ? aspect.Negated : null;
                 var holds = objects.All(obj =>
                 {
                     var traits = Characteristics.Of(state, obj);
