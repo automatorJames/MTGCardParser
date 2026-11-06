@@ -26,9 +26,23 @@ public sealed partial class Game
     const int SpectacleCast = -21;
     const int BlitzCast = -22;
     const int PrototypeCast = -23;
+    const int MiracleCast = -24;
 
     /// <summary>Keyword costs paid instead of the mana cost that aren't offered from the hand at the usual times (see <see cref="KeywordCast"/>).</summary>
-    static readonly (string Keyword, int Index, string Option)[] _otherZoneCasts = [("Escape", EscapeCast, "Escaped"), ("Sneak", SneakCast, "Sneak")];
+    static readonly (string Keyword, int Index, string Option)[] _otherZoneCasts = [("Escape", EscapeCast, "Escaped"), ("Sneak", SneakCast, "Sneak"), ("Miracle", MiracleCast, "Miracle")];
+
+    /// <summary>Miracle: the first card a player draws in a turn, if it has miracle, may be cast right away for its miracle cost.</summary>
+    void Miracle(ObjectId card, PlayerId player)
+    {
+        if (State.Object(card) is not { Zone: Zone.Hand } obj || KeywordCost(obj.Card, "Miracle") is not { } cost)
+            return;
+        if (State.ThisTurnEventList.OfType<Drew>().Count(x => x.Player == player && x.Card is not null) != 1)
+            return;
+        if (Forbidden(player, obj) || !AdditionalPayable(cost, player, card, 0) || !KeywordCastPayable(obj, player, cost) || !TargetsAvailable(SpellSlots(obj.Card), player, card))
+            return;
+        if (Decide(new YesNo(player, $"Miracle: cast {obj.Card.Name} for {Interpreter.Describe(new PayCost(cost))}?")).Yes)
+            Cast(card, player, 0, alternative: MiracleCast);
+    }
 
     static readonly Cost _jumpStartCost = new ActionCost(new Discard(new PlayerSelector(PlayerKind.You), new Fixed(1)));
 

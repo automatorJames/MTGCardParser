@@ -1407,7 +1407,10 @@ public sealed partial class Game
             if (Dredged(player))
                 continue;
             var library = State.Player(player).Library;
-            Emit(new Drew(player, library.Count > 0 ? library[0] : null));
+            var drawn = library.Count > 0 ? library[0] : (ObjectId?)null;
+            Emit(new Drew(player, drawn));
+            if (drawn is { } card)
+                Miracle(card, player);
         }
     }
 

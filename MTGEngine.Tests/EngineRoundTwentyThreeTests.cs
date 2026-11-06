@@ -571,4 +571,20 @@ public sealed class EngineRoundTwentyThreeTests
         Assert.Equal(16, game.P1().Life);
         Assert.Single(new[] { cast, spliced }, x => game.State.Object(x).Zone == Zone.Hand);
     }
+
+    [Fact]
+    public void BanishingStrokeIsAMiracleWhenDrawnFirst()
+    {
+        var game = Started("Plains", new GreedyAgent(attacks: false));
+        Lands(game, "Plains", 1);
+        var bears = Put(game, Cards.Vanilla("Bears", "{1}{G}", 2, 2), 1);
+        var stroke = Put(game, Cards.Named("Banishing Stroke"), 0, Zone.Hand);
+        game.MoveToZone(stroke, Zone.Library, new PlayerId(0), position: 0);
+
+        game.PlayTurn(new PlayerId(1));
+        game.PlayTurn(new PlayerId(0));
+
+        Assert.Equal(Zone.Library, game.State.Object(bears).Zone);
+        Assert.Equal(Zone.Graveyard, game.State.Object(stroke).Zone);
+    }
 }
