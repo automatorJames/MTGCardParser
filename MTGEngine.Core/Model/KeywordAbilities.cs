@@ -368,6 +368,14 @@ public static class KeywordAbilities
                     new Delayed(new PhaseEvent(new PhaseRef("EndStep", Next: true)), new Sacrifice(You, new Self())), new WasCastWith(new Self(), "Blitz"));
                 yield return new TriggeredAbility(new ObjectEvent(new Self(), ["Dies"]), new Draw(You, new Fixed(1)), new WasCastWith(new Self(), "Blitz"));
                 break;
+            // Graft N: enters with N +1/+1 counters; whenever another creature enters, you may move a +1/+1 counter from this onto it.
+            case "Graft" when keyword.Amount is Fixed:
+                yield return new ReplacementAbility(new EntersBattlefield(new Self(), With: [new PutCounters(new Self(), new CounterSpec("+1/+1", new Fixed(amount)))]));
+                yield return new TriggeredAbility(
+                    new ObjectEvent(new ObjectSelector(Quantifier.Any, new ObjectFilter(Kinds: [new Term("Creature", "CardType")]), Other: true), ["EntersTheBattlefield"]),
+                    new Optional(new MoveCounters(new CounterSpec("+1/+1", new Fixed(1)), new Self(), new Reference(null, "it"))),
+                    new HasCountersCondition(new Self(), new CounterSpec("+1/+1", null)));
+                break;
             case "Affinity" when AffinityKind(keyword.Parameter) is { } kind:
                 yield return new StaticAbility(new CostModification(new Self(), new PayMana(["{1}"]), "Less", "Cast",
                     new CountOf(new ObjectSelector(Quantifier.All, new ObjectFilter(Kinds: [kind], Controller: new Controlled(You))))));

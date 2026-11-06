@@ -35,6 +35,8 @@ public static class SelfReferenceRepair
         {
             // "Exile the top card of target player's library. if it's a land card": "it" is a card, not the player.
             ObjectIs { Object: Reference { Antecedent: "player" or "opponent" } } objectIs => objectIs with { Object = _thoseCards },
+            // "Look at target player's hand and choose two cards from it. Put them on top of that player's library": the cards.
+            ChangeZone { Objects: Reference { Antecedent: "player" or "opponent", Text: "them" or "it" } } moved => moved with { Objects = _thoseMade },
             IsKind { Object: Reference { Antecedent: "player" or "opponent" } } isKind => isKind with { Object = _thoseCards },
             // "Put a +1/+1 counter on target creature you control if it's legendary", "… on equipped creature if it's
             // white": an "it's" nothing before it named is the object the effect names.

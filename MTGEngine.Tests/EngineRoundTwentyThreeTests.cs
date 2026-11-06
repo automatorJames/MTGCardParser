@@ -196,4 +196,76 @@ public sealed class EngineRoundTwentyThreeTests
         Assert.Equal(Zone.Graveyard, game.State.Object(other).Zone);
         Assert.Equal(new PlayerId(1), game.State.Object(bears).Controller);
     }
+
+    [Fact]
+    public void AquastrandSpiderGraftsOntoACreatureThatEnters()
+    {
+        // No lands, so the spider's own {g} ability doesn't spend the turn.
+        var game = Started("Forest", new GreedyAgent(attacks: false));
+        var spider = Put(game, Cards.Named("Aquastrand Spider"), 0);
+        Assert.Equal(2, game.State.Object(spider).CountersOf("+1/+1"));
+        var bears = Put(game, Cards.Vanilla("Bears", "{1}{G}", 2, 2), 0);
+
+        game.PlayTurn(new PlayerId(0));
+
+        Assert.Equal(1, game.State.Object(spider).CountersOf("+1/+1"));
+        Assert.Equal(1, game.State.Object(bears).CountersOf("+1/+1"));
+    }
+
+    [Fact]
+    public void WizardClassDrawsTwoWhenItBecomesLevelTwo()
+    {
+        var game = Started("Island", new GreedyAgent(attacks: false));
+        Lands(game, "Island", 3);
+        Put(game, Cards.Named("Wizard Class"), 0);
+
+        game.PlayTurn(new PlayerId(0));
+
+        Assert.Equal(18, game.P0().Library.Count);
+    }
+
+    [Fact]
+    public void AcidicSoilHitsEachPlayerForTheirOwnLands()
+    {
+        var game = Started("Mountain", new GreedyAgent(attacks: false));
+        Lands(game, "Mountain", 3);
+        Put(game, Cards.Basic("Plains"), 1);
+        Put(game, Cards.Named("Acidic Soil"), 0, Zone.Hand);
+
+        game.PlayTurn(new PlayerId(0));
+
+        Assert.Equal(17, game.P0().Life);
+        Assert.Equal(19, game.P1().Life);
+    }
+
+    [Fact]
+    public void NaturesResurgenceDrawsForEachPlayersOwnCreatureCards()
+    {
+        var game = Started("Forest", new GreedyAgent(attacks: false));
+        Lands(game, "Forest", 4);
+        Put(game, Cards.Vanilla("Fallen", "{1}", 1, 1), 0, Zone.Graveyard);
+        Put(game, Cards.Vanilla("Fallen", "{1}", 1, 1), 1, Zone.Graveyard);
+        Put(game, Cards.Vanilla("Fallen", "{1}", 1, 1), 1, Zone.Graveyard);
+        Put(game, Cards.Named("Nature's Resurgence"), 0, Zone.Hand);
+
+        game.PlayTurn(new PlayerId(0));
+
+        Assert.Equal(19, game.P0().Library.Count);
+        Assert.Equal(18, game.P1().Library.Count);
+    }
+
+    [Fact]
+    public void EmptyTheCatacombsReturnsEachPlayersCreatureCards()
+    {
+        var game = Started("Swamp", new GreedyAgent(attacks: false));
+        Lands(game, "Swamp", 4);
+        var mine = Put(game, Cards.Vanilla("Fallen", "{1}", 1, 1), 0, Zone.Graveyard);
+        var theirs = Put(game, Cards.Vanilla("Fallen", "{1}", 1, 1), 1, Zone.Graveyard);
+        Put(game, Cards.Named("Empty the Catacombs"), 0, Zone.Hand);
+
+        game.PlayTurn(new PlayerId(0));
+
+        Assert.Equal(Zone.Hand, game.State.Object(theirs).Zone);
+        Assert.True(game.State.Object(mine).Zone is Zone.Hand or Zone.Stack or Zone.Battlefield);
+    }
 }

@@ -104,7 +104,7 @@ public static class InterpreterSupport
         typeof(ChooseEffect), typeof(BecomesAspect), typeof(PreventDamage), typeof(RedirectDamage), typeof(CostModification),
         typeof(PlayCard), typeof(CantBeRegenerated), typeof(CantBeTargeted), typeof(MustCombat), typeof(SetStats), typeof(Replacement),
         typeof(Otherwise), typeof(StillOfKind), typeof(Remains), typeof(RevealUntil), typeof(CantPlay), typeof(GetEnergy), typeof(CanAsThough), typeof(Convoke),
-        typeof(CopySpell), typeof(DistributeCounters), typeof(MustBlock), typeof(MustBeBlocked), typeof(DoubleCounters), typeof(DoubleStats), typeof(SwitchStats), typeof(ChangeTargets), typeof(CantBeActivated), typeof(CanBlock), typeof(CreateEmblem),
+        typeof(CopySpell), typeof(DistributeCounters), typeof(MoveCounters), typeof(MustBlock), typeof(MustBeBlocked), typeof(DoubleCounters), typeof(DoubleStats), typeof(SwitchStats), typeof(ChangeTargets), typeof(CantBeActivated), typeof(CanBlock), typeof(CreateEmblem),
         typeof(FlipCoin), typeof(RollDice), typeof(CastAsThoughFlash), typeof(MustBlock), typeof(MayNotUntap), typeof(Skip), typeof(TurnFace),
         typeof(GainClassLevel), typeof(BecomeCopy), typeof(MayPlayFrom), typeof(ManaRestriction), typeof(ExtraLandPlays),
     ];
@@ -316,7 +316,7 @@ public static class InterpreterSupport
             ObjectEvent { By: not null } byEvent when byEvent.Events.Any(x => x != "BecomesTarget") || !Triggers.TargetedByKinds.Contains(byEvent.By) => "ObjectEvent.By",
             PhaseEvent phase when Conditions.StepOf(phase.At.Phase) is null => $"PhaseEvent.{phase.At.Phase}",
             TriggeredAbility { Trigger: PlayerAction { Action: "AttackedWith" or "Activate" } } => null,
-            TriggeredAbility { Trigger: PlayerAction or NamedEvent } trigger => $"TriggeredAbility[{trigger.Trigger.GetType().Name}]",
+            TriggeredAbility { Trigger: PlayerAction or NamedEvent { Kind: not "ClassBecomesLevel" } } trigger => $"TriggeredAbility[{trigger.Trigger.GetType().Name}]",
             Delayed { When: PlayerAction or NamedEvent } delayed => $"Delayed[{delayed.When.GetType().Name}]",
             PlayerEvent playerEvent when playerEvent.Event is not ("GainsLife" or "LosesLife" or "GainsOrLosesLife" or "Attacks" or "DiscardsACard" or "CyclesOrDiscardsACard" or "CyclesACard" or "CyclesThisCard" or "DrawsSecondCardEachTurn" or "SacrificesAnotherPermanent" or "ScriesOrSurveils" or "CommitsACrime") => $"PlayerEvent.{playerEvent.Event}",
             Qualifier { Vocabulary: "PermanentDesignation" } designation when !Filters.Designations.Contains(designation.Quality) => $"Qualifier[PermanentDesignation.{designation.Quality}]",

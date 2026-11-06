@@ -172,6 +172,10 @@ public static class Triggers
             case ObjectEvent objectEvent:
                 return MatchObjectEvent(objectEvent, evt, source, after, before);
 
+            // "When this class becomes level 3": its level counters reach that level (a class starts at level 1).
+            case NamedEvent { Kind: "ClassBecomesLevel", Amount: Fixed { Value: var level } } when evt is CountersChanged { Kind: "class-level", Delta: > 0 } leveled && leveled.Object == source.Id:
+                return new Matched(after.Object(source.Id)?.CountersOf("class-level") == level - 1, null);
+
             case PhaseEvent phase when evt is StepBegan step:
             {
                 var at = phase.At;

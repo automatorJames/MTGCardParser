@@ -14,7 +14,7 @@ public static class Keywords
         // Expanded into abilities (see KeywordAbilities).
         "Equip", "Cycling", "Typecycling", "Unearth", "LevelUp", "Crew", "Prowess", "Exalted", "Flanking", "Bushido", "Bloodthirst", "Ward", "Echo", "CumulativeUpkeep", "Vanishing", "Fading", "Soulshift", "Fabricate", "Backup", "StartYourEngines", "Renown", "Sunburst", "Learn", "Ninjutsu",
         "Scavenge", "Embalm", "Eternalize", "Transmute", "Modular", "Unleash", "Mentor", "Evolve", "Extort", "Clash",
-        "Saddle", "Station", "Riot", "Afflict", "Annihilator", "Outlast", "Decayed", "Reinforce", "Ingest",
+        "Saddle", "Station", "Riot", "Afflict", "Annihilator", "Outlast", "Decayed", "Reinforce", "Ingest", "Graft",
         "Scry", "Surveil", "Investigate", "Proliferate", "Fateseal", "Populate", "Bolster", "Explore", "Adapt",
         // Read where they apply.
         "Protection", "Devoid", "Changeling", "Wither", "Toxic", "Persist", "Undying", "TotemArmor",

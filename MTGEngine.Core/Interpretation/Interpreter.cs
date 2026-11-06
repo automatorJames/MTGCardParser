@@ -30,6 +30,10 @@ public static class Interpreter
         return result;
     }
 
+    /// <summary>Whether a quantity counts something of "that player" / "they" ("the number of lands they control").</summary>
+    static bool MentionsThatPlayer(IrNode node) =>
+        node is not null && MTGRulesIR.Lowering.NodeWalker.Nodes(node).Any(x => x is PlayerSelector { Kind: PlayerKind.ThatPlayer } or Reference { Binding: null, Text: "they" or "their" or "them" or "that player" });
+
     /// <summary>The binding of the objects an effect chooses itself ("sacrifice a creature", "exile a card from your hand"), if it has one.</summary>
     static string ChosenBinding(Effect effect) =>
         effect.GetType().GetProperty("Objects")?.GetValue(effect) is ObjectSelector { Binding: { } binding, Quantifier: not Quantifier.Target } ? binding : null;
@@ -43,6 +47,20 @@ public static class Interpreter
         {
             case null:
                 return ctx;
+
+            // "Target player draws x cards, {this} deals x damage to any target, and you gain x life, where x is …": the
+            // "where x is" lowered around the last step defines x for the steps before it too.
+            case Sequence sequence when sequence.Steps.Select((step, i) => (step, i)).FirstOrDefault(x => x.i > 0 && x.step is LetVariable { Name: "X" or "x" }) is ({ } found, var at)
+                && sequence.Steps.Take(at).Any(step => MTGRulesIR.Lowering.NodeWalker.Nodes(step).Any(n => n is Variable { Name: "X" or "x" })):
+            {
+                var let = (LetVariable)found;
+                if (Quantities.Evaluate(let.Definition, ctx) is not { } x)
+                    return Skipped(game, let, "variable definition", ctx);
+                var withX = ctx with { X = x };
+                foreach (var step in sequence.Steps.Select(s => ReferenceEquals(s, found) ? let.Effect : s))
+                    withX = Execute(step, withX);
+                return withX with { X = ctx.X };
+            }
 
             case Sequence sequence:
                 foreach (var step in sequence.Steps)
@@ -126,15 +144,27 @@ public static class Interpreter
                             bindings[referenced] = [TargetRef.Of(dealer)];
                         own = ctx with { Last = [TargetRef.Of(dealer)], Bindings = bindings };
                     }
+                    var targets = portion.To is null ? (ctx.TriggerSubject is { } subject ? [subject] : ctx.Last ?? [])
+                        : portion.To is Reference { Text: "itself" or "themselves" or "himself" or "herself" } ? Resolver.Targets(portion.To, own)
+                        : Resolver.Targets(portion.To, ctx);
+                    // "Deals damage to each player equal to the number of lands they control": each player's own amount.
+                    if (damage.Divided is null && targets.Count > 1 && targets.All(x => x.IsPlayer) && MentionsThatPlayer(portion.Amount))
+                    {
+                        foreach (var player in targets)
+                            if (Quantities.Evaluate(portion.Amount, own with { Last = [player] }) is > 0 and var share)
+                            {
+                                game.DealDamage(source, player, share, combat: false);
+                                total += share;
+                                hit.Add(player);
+                            }
+                        continue;
+                    }
                     var amount = Quantities.Evaluate(portion.Amount, own);
                     if (amount is null)
                     {
                         game.Skip(portion.Amount, "amount not evaluable");
                         continue;
                     }
-                    var targets = portion.To is null ? (ctx.TriggerSubject is { } subject ? [subject] : ctx.Last ?? [])
-                        : portion.To is Reference { Text: "itself" or "themselves" or "himself" or "herself" } ? Resolver.Targets(portion.To, own)
-                        : Resolver.Targets(portion.To, ctx);
                     // "Divided as you choose among one, two, or three targets": as evenly as it goes, the first ones getting the remainder.
                     var shares = damage.Divided is not null && targets.Count > 0
                         ? targets.Select((_, n) => amount.Value / targets.Count + (n < amount.Value % targets.Count ? 1 : 0)).ToList()
@@ -418,6 +448,28 @@ public static class Interpreter
                 return ctx with { Affected = each.Where(x => x.Value > 0).Select(x => TargetRef.Of(x.Key)).ToImmutableList(), LastAmount = total };
             }
 
+            // "Move a +1/+1 counter from target creature onto a second target creature", "move all counters from this onto target creature".
+            case MoveCounters move:
+            {
+                var from = move.From is null or Self ? (ctx.Source is { } own ? [own] : []) : Resolver.Objects(move.From, ctx);
+                var to = (move.To is Self ? (ctx.Source is { } self ? [self] : []) : Resolver.Objects(move.To, ctx)).Where(x => state.Object(x) is { Zone: Zone.Battlefield }).ToList();
+                if (to.Count == 0)
+                    return ctx;
+                var count = move.Counters.Count is Special { Kind: "All" or "AnyNumber" } ? int.MaxValue : Quantities.Evaluate(move.Counters.Count, ctx) ?? 1;
+                var moved = 0;
+                foreach (var holder in from.Where(x => !to.Contains(x) || from.Count > 1).Select(x => game.State.Object(x)).Where(x => x is { Zone: Zone.Battlefield }).ToList())
+                    foreach (var (kind, have) in holder.CounterMap.Where(x => x.Value > 0 && x.Key is not ("deathtouch-damage" or "regeneration-shield") && (move.Counters.Kind is null || x.Key == move.Counters.Kind)).ToList())
+                    {
+                        var amount = Math.Min(have, count - moved);
+                        if (amount <= 0 || to[0] == holder.Id)
+                            continue;
+                        game.Emit(new CountersChanged(holder.Id, kind, -amount));
+                        game.Emit(new CountersChanged(to[0], kind, amount));
+                        moved += amount;
+                    }
+                return ctx with { LastAmount = moved };
+            }
+
             case DoubleCounters doubled:
             {
                 var objects = doubled.On is Self ? (ctx.Source is { } own ? [own] : []) : Resolver.Objects(doubled.On, ctx);
@@ -525,6 +577,19 @@ public static class Interpreter
                     return Skipped(game, prevent, "prevent that damage", ctx);
                 game.CreateShields(prevent, ctx);
                 return ctx;
+
+            // "Each player returns all creature cards from their graveyard to their hand" lowered without its "each player":
+            // a "their" zone no one is named for is each player's, in turn.
+            case ChangeZone { Objects: ObjectSelector { Filter.Zone.Owner: PlayerSelector { Kind: PlayerKind.ThatPlayer } } } eachChange when Resolver.Players(new PlayerSelector(PlayerKind.ThatPlayer), ctx).Count == 0:
+            {
+                List<TargetRef> moved = [];
+                foreach (var player in state.TurnOrderFrom(ctx.Controller).ToList())
+                {
+                    var result = Execute(eachChange, ctx with { Last = [TargetRef.Of(player)] });
+                    moved.AddRange(result.Affected ?? []);
+                }
+                return ctx with { Affected = moved.ToImmutableList(), Last = moved.ToImmutableList() };
+            }
 
             case ChangeZone change:
             {
@@ -1020,7 +1085,7 @@ public static class Interpreter
             }
 
             // "For each creature target player controls, create a token that's a copy of that creature": once for each, about it.
-            case ForEachOf { Count: CountOf { Of: ObjectSelector each } } forEach when MTGRulesIR.Lowering.NodeWalker.Nodes(forEach.Effect).OfType<Reference>().Any():
+            case ForEachOf { Count: CountOf { Of: ObjectSelector each } } forEach when MTGRulesIR.Lowering.NodeWalker.Nodes(forEach.Effect).OfType<Reference>().Any(r => r.Binding is null || r.Binding == each.Binding):
             {
                 foreach (var id in Resolver.Objects(each, ctx).ToList())
                 {
@@ -1028,6 +1093,22 @@ public static class Interpreter
                     if (each.Binding is { } binding)
                         bindings[binding] = [TargetRef.Of(id)];
                     ctx = Execute(forEach.Effect, ctx with { Last = [TargetRef.Of(id)], TriggerSubject = TargetRef.Of(id), Bindings = bindings }) with { TriggerSubject = ctx.TriggerSubject, Bindings = ctx.Bindings };
+                }
+                return ctx;
+            }
+
+            // "Each player draws a card for each creature card in their graveyard": each player as many times as their own count says.
+            case ForEachOf forEach when MentionsThatPlayer(forEach.Count) && forEach.Effect.GetType().GetProperty("Player") is { CanWrite: true } playerProperty
+                && playerProperty.GetValue(forEach.Effect) is PlayerSelector { Kind: PlayerKind.EachPlayer or PlayerKind.EachOpponent } each:
+            {
+                var single = (Effect)forEach.Effect.GetType().GetMethod("<Clone>$")!.Invoke(forEach.Effect, null);
+                playerProperty.SetValue(single, new PlayerSelector(PlayerKind.ThatPlayer));
+                foreach (var player in Resolver.Players(each, ctx).ToList())
+                {
+                    var own = ctx with { Last = [TargetRef.Of(player)] };
+                    var times = Quantities.Evaluate(forEach.Count, own) ?? 0;
+                    for (var i = 0; i < times; i++)
+                        Execute(single, own);
                 }
                 return ctx;
             }

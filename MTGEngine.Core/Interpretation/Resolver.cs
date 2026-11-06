@@ -331,6 +331,10 @@ public static class Resolver
         var targeted = ctx.TargetsBySelector.Values.SelectMany(x => x).Where(x => x.IsPlayer).Select(x => x.Player.Value).Distinct().ToImmutableList();
         if (targeted.Count == 1)
             return targeted;
+        // "Target creature an opponent controls deals damage to each other creature that player controls": its controller.
+        var controllers = ctx.TargetsBySelector.Values.SelectMany(x => x).Where(x => x.IsObject).Select(x => ctx.State.Object(x.Object.Value)?.Controller).Where(x => x is not null).Select(x => x.Value).Distinct().ToImmutableList();
+        if (targeted.Count == 0 && controllers.Count == 1)
+            return controllers;
         return ctx.TriggerSubject is { IsPlayer: true } subject ? [subject.Player.Value] : [];
     }
 
