@@ -341,9 +341,13 @@ public static class Conditions
                     return null;
                 var holds = holders.All(holder =>
                 {
+                    // "If it had a death counter on it": a permanent that has left is judged as it last was on the battlefield.
+                    var obj = holder.IsObject ? state.Object(holder.Object.Value) : null;
+                    if (obj is not null && counters.Tense == "Had" && obj.Zone != Zone.Battlefield && state.LastKnownOf(obj.Id) is { } known)
+                        obj = known;
                     var amount = counters.Counters.Kind is not { } kind
-                        ? holder.IsObject ? state.Object(holder.Object.Value)?.CounterMap.Values.Sum() ?? 0 : state.Player(holder.Player.Value).Poison
-                        : holder.IsObject ? state.Object(holder.Object.Value)?.CountersOf(kind) ?? 0 : kind == "poison" ? state.Player(holder.Player.Value).Poison : 0;
+                        ? holder.IsObject ? obj?.CounterMap.Values.Sum() ?? 0 : state.Player(holder.Player.Value).Poison
+                        : holder.IsObject ? obj?.CountersOf(kind) ?? 0 : kind == "poison" ? state.Player(holder.Player.Value).Poison : 0;
                     return counters.Counters.Count switch
                     {
                         Bound bound when Quantities.Evaluate(bound.Value, ctx) is { } threshold => Filters.Compare(amount, bound.Comparison, threshold),

@@ -168,13 +168,13 @@ public static class InterpreterSupport
     static readonly HashSet<string> _qualifierVocabularies =
     [
         "CardType", "CreatureType", "LandType", "PermanentSubtype", "PlaneswalkerType", "ArtifactType", "EnchantmentType", "Supertype", "ManaColor",
-        "ColorCount", "Colorfulness", "TapState", "CombatState", nameof(ObjectKind), "Distinction", "Keyword", "AttachedBy", "Kind", "Position", "Provenance", "TokenWord", "CounterKind",
+        "ColorCount", "Colorfulness", "TapState", "CombatState", nameof(ObjectKind), "Distinction", "Keyword", "AttachedBy", "Kind", "Position", "Provenance", "TokenWord", "CounterKind", "CardGroup", "CountSuffix", "Manner",
         "LeftoverCards", "AffectedThisWay", "DamageHistory", "ThisWayAction", "SpellOrdinal", "SpellCountPeriod", "AbilityCategory",
     ];
 
     static readonly HashSet<string> _kindVocabularies =
     [
-        nameof(ObjectKind), "TokenWord", "PlayerIdentity", "ManaColor", "TapState", "CombatState", "RetargetedObject", "CopiedSpell", "SourceNoun", "CardType", "CreatureType", "LandType", "PermanentSubtype", "PlaneswalkerType", "ArtifactType", "EnchantmentType", "SpellSubtype", "Supertype", "PermanentKind", nameof(ChosenCharacteristic),
+        nameof(ObjectKind), "TokenWord", "PlayerIdentity", "ManaColor", "TapState", "CombatState", "RetargetedObject", "CopiedSpell", "SourceNoun", "CardType", "CreatureType", "LandType", "PermanentSubtype", "PlaneswalkerType", "ArtifactType", "EnchantmentType", "SpellSubtype", "Supertype", "PermanentKind", nameof(ChosenCharacteristic), "TypeDesignation",
     ];
 
     /// <summary>
@@ -197,6 +197,8 @@ public static class InterpreterSupport
         {
             Conditional { Then: EntersBattlefield, Else: null } => true,
             LetVariable { Effect: EntersBattlefield { Objects: null or Self, If: null, With.Count: > 0 } } => true,
+            // "This spell costs {x} less to cast, where x is …": read where the spell's cost is (Game.CostToCast).
+            CostModification { Spells: Self } or LetVariable { Effect: CostModification { Spells: Self } } => true,
             BecomeCopy { Verb: "EntersAs" } or Optional { Effect: BecomeCopy { Verb: "EntersAs" } } => true,
             CantBeTargeted { Objects: Self } => true,
             // Looking at hidden cards changes nothing in the game (the engine keeps no secrets from its agents).
@@ -320,6 +322,9 @@ public static class InterpreterSupport
             Qualifier { Vocabulary: "PermanentDesignation" } designation when !Filters.Designations.Contains(designation.Quality) => $"Qualifier[PermanentDesignation.{designation.Quality}]",
             Term { Vocabulary: "PermanentDesignation" } designation when !Filters.Designations.Contains(designation.Value) => $"Term[PermanentDesignation.{designation.Value}]",
             Qualifier qualifier when qualifier.Vocabulary != "PermanentDesignation" && !_qualifierVocabularies.Contains(qualifier.Vocabulary ?? "") => $"Qualifier[{qualifier.Vocabulary}]",
+            Qualifier { Vocabulary: "CardGroup", Quality: not ("Historic" or "Outlaw") } group => $"Qualifier[CardGroup.{group.Quality}]",
+            Qualifier { Vocabulary: "CountSuffix", Quality: not ("Other" or "OrMore") } suffix => $"Qualifier[CountSuffix.{suffix.Quality}]",
+            Qualifier { Vocabulary: "Manner", Quality: not "AtRandom" } manner => $"Qualifier[Manner.{manner.Quality}]",
             Qualifier { Vocabulary: "Distinction", Quality: not (nameof(Distinction.Other) or nameof(Distinction.NamedThis) or nameof(Distinction.OrTied) or nameof(Distinction.NotOnTheBattlefield)) } distinction => $"Qualifier[Distinction.{distinction.Quality}]",
             Term term when term.Vocabulary != "PermanentDesignation" && !_kindVocabularies.Contains(term.Vocabulary ?? "") => $"Term[{term.Vocabulary}]",
             Related { Relation: not (Relation.OtherThan or Relation.AttachedTo or Relation.Among or Relation.Is or Relation.On or Relation.ExiledWith or Relation.AbilityOf or Relation.InPartyOf) } related => $"Related.{related.Relation}",

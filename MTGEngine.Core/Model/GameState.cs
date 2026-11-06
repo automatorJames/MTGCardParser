@@ -167,8 +167,15 @@ public sealed record GameState(
     ImmutableList<ExileLink> ExileLinks = null,
     ImmutableList<PlayRestriction> PlayRestrictions = null,
     ImmutableList<(PlayerId Player, Step Step)> SkipNext = null,
-    ImmutableList<ControlEffect> ControlEffects = null)
+    ImmutableList<ControlEffect> ControlEffects = null,
+    ImmutableDictionary<ObjectId, GameObject> LastKnown = null)
 {
+    /// <summary>
+    /// What a permanent was as it last left the battlefield, for "if it had a death counter on it" read after it died:
+    /// last known information.
+    /// </summary>
+    public GameObject LastKnownOf(ObjectId id) => LastKnown?.GetValueOrDefault(id);
+
     /// <summary>The effects that change who controls permanents (see <see cref="ControlEffect"/>).</summary>
     public ImmutableList<ControlEffect> ControlEffectList => ControlEffects ?? ImmutableList<ControlEffect>.Empty;
 

@@ -188,6 +188,22 @@ public static class Filters
                 _ => false,
             },
             "Keyword" => traits.HasKeyword(qualifier.Quality),
+            // "Historic" (artifacts, legendaries and sagas), "outlaw" (assassins, mercenaries, pirates, rogues and warlocks).
+            "CardGroup" => qualifier.Quality switch
+            {
+                "Historic" => traits.Types.Contains("Artifact") || obj.Card.Supertypes.Contains("Legendary") || traits.Subtypes.Contains("Saga"),
+                "Outlaw" => traits.Subtypes.Overlaps(_outlaws),
+                _ => false,
+            },
+            // "Up to one other target creature"; "one or more target creatures" (how many is the selector's).
+            "CountSuffix" => qualifier.Quality switch
+            {
+                "Other" => obj.Id != source,
+                "OrMore" => true,
+                _ => false,
+            },
+            // "A card at random": how it's picked (Resolver), not which cards qualify.
+            "Manner" => true,
             "Position" => true,
             "Provenance" => true,
             "AttachedBy" => true,
@@ -218,6 +234,8 @@ public static class Filters
     }
 
     [ThreadStatic] static int _comparing;
+
+    static readonly ImmutableHashSet<string> _outlaws = ["Assassin", "Mercenary", "Pirate", "Rogue", "Warlock"];
 
     static bool PredicateMatches(GameState state, Predicate predicate, GameObject obj, Characteristics traits, PlayerId you, ObjectId? source, EffectContext ctx)
     {

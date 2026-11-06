@@ -69,6 +69,23 @@ public static class Resolver
         }
     }
 
+    /// <summary>
+    /// The objects an effect acts on: as <see cref="Objects"/>, except that "a" or "an" in an effect ("return another
+    /// creature you control to its owner's hand", "exile a card at random from your graveyard") is one of them, chosen
+    /// by the effect's controller or at random. In a condition "a creature" means any, so this is for effects only.
+    /// </summary>
+    public static ImmutableList<ObjectId> ForEffect(Selector selector, EffectContext ctx)
+    {
+        var objects = Objects(selector, ctx);
+        if (selector is not ObjectSelector { Quantifier: Quantifier.Any } any || objects.Count <= 1)
+            return objects;
+        var atRandom = any.Filter?.Qualifiers?.Any(q => q is { Vocabulary: "Manner", Quality: "AtRandom" }) == true;
+        var picked = atRandom && ctx.Game is not null ? objects.OrderBy(_ => ctx.Game.Rng.Next()).Take(1).ToImmutableList() : Choose(objects, 1, any.UpTo, ctx);
+        if (any.Binding is { } binding)
+            ctx.Binds[binding] = picked.Select(TargetRef.Of).ToImmutableList();
+        return picked;
+    }
+
     public static ImmutableList<ObjectId> Objects(Selector selector, EffectContext ctx)
     {
         var state = ctx.State;
@@ -97,7 +114,8 @@ public static class Resolver
                 };
                 if (wanted is { } count && (count < matching.Count || pooled.UpTo))
                 {
-                    var picked = Choose(matching, count, pooled.UpTo, ctx);
+                    var atRandom = pooled.Filter?.Qualifiers?.Any(q => q is { Vocabulary: "Manner", Quality: "AtRandom" }) == true;
+                    var picked = atRandom ? matching.OrderBy(_ => ctx.Game.Rng.Next()).Take(count).ToImmutableList() : Choose(matching, count, pooled.UpTo, ctx);
                     ctx.Binds["#rest"] = pool.Except(picked).Select(TargetRef.Of).ToImmutableList();
                     matching = picked;
                 }

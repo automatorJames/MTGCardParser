@@ -160,7 +160,20 @@ public sealed record CardDefinition(
             // "You may play an additional land on each of your turns": the "may" is the permission itself.
             EffectLine { Effect: Optional { Effect: ExtraLandPlays extra } } when Characteristics.IsContinuous(extra) => new StaticAbility(extra),
             EffectLine { Effect: Conditional { If: var holds, Then: var then, Else: null } } when then is not null && Characteristics.IsContinuous(then) => new StaticAbility(then, holds),
+            // "Enchanted creature gets -x/-x, where x is …": a pump of -1/-1 for each of what x counts.
+            EffectLine { Effect: LetVariable { Effect: Pump { Duration: null, PerEach: null } pump, Definition: var x } } when PerX(pump.Power) is { } power && PerX(pump.Toughness) is { } toughness
+                => new StaticAbility(pump with { Power = new Fixed(power), Toughness = new Fixed(toughness), PerEach = x }),
             _ => ability,
+        };
+
+    /// <summary>A pump amount as a multiple of x: x is 1, -x is -1, 0 is 0; null for any other.</summary>
+    static int? PerX(Quantity amount) =>
+        amount switch
+        {
+            null or Fixed { Value: 0 } => 0,
+            Variable { Name: "X" or "x" } => 1,
+            Negated { Of: Variable { Name: "X" or "x" } } => -1,
+            _ => null,
         };
 
     static StaticAbility PlayFromStatic(MayPlayFrom permission) =>

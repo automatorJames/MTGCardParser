@@ -211,6 +211,15 @@ public sealed record Characteristics(
                 case Pump pump:
                 {
                     var factor = pump.Remove ? -1 : 1;
+                    // "Gets +1/+1 for each other creature you control": counted as the source sees it, without statics
+                    // (as a characteristic-defining count is), so a count can't feed on itself.
+                    if (pump.PerEach is not null)
+                    {
+                        _judgingCondition++;
+                        // "Its" in the count is the pumped object ("enchanted creature gets -x/-x, where x is the number of creature cards in its controller's graveyard").
+                        try { factor *= Quantities.Evaluate(pump.PerEach, EffectContext.Snapshot(state, source.Controller, source.Id) with { TriggerSubject = obj.Id == source.Id ? null : TargetRef.Of(obj.Id) }) ?? 0; }
+                        finally { _judgingCondition--; }
+                    }
                     power += factor * ((pump.Power as Fixed)?.Value ?? 0);
                     toughness += factor * ((pump.Toughness as Fixed)?.Value ?? 0);
                     foreach (var keyword in pump.Keywords ?? [])

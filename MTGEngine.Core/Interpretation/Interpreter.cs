@@ -147,7 +147,7 @@ public static class Interpreter
 
             case Destroy destroy:
             {
-                var objects = Resolver.Objects(destroy.Objects, ctx);
+                var objects = Resolver.ForEffect(destroy.Objects, ctx);
                 List<TargetRef> affected = [];
                 foreach (var id in objects)
                     if (game.Destroy(id, destroy.Manner == "CantBeRegenerated"))
@@ -157,7 +157,7 @@ public static class Interpreter
 
             case Exile exile:
             {
-                var objects = Resolver.Objects(exile.Objects, ctx);
+                var objects = Resolver.ForEffect(exile.Objects, ctx);
                 foreach (var id in objects)
                     game.MoveToZone(id, Zone.Exile);
                 if (ctx.Source is { } exiler && game.State.Object(exiler) is { } by)
@@ -190,7 +190,7 @@ public static class Interpreter
 
             case Tap tap:
             {
-                var objects = Resolver.Objects(tap.Objects, ctx);
+                var objects = Resolver.ForEffect(tap.Objects, ctx);
                 foreach (var id in objects)
                     game.Tap(id);
                 return ctx with { Last = objects.Select(TargetRef.Of).ToImmutableList() };
@@ -198,7 +198,7 @@ public static class Interpreter
 
             case Untap untap:
             {
-                var objects = Resolver.Objects(untap.Objects, ctx);
+                var objects = Resolver.ForEffect(untap.Objects, ctx);
                 foreach (var id in objects)
                     game.Untap(id);
                 return ctx with { Last = objects.Select(TargetRef.Of).ToImmutableList() };
@@ -227,7 +227,7 @@ public static class Interpreter
                 var kind = put.Counters.Kind;
                 if (kind is null)
                     return Skipped(game, put, "counter kind unknown", ctx);
-                var objects = put.Objects is null ? (ctx.Source is { } s ? [s] : []) : Resolver.Objects(put.Objects, ctx);
+                var objects = put.Objects is null ? (ctx.Source is { } s ? [s] : []) : Resolver.ForEffect(put.Objects, ctx);
                 foreach (var id in objects)
                     game.Emit(new CountersChanged(id, kind, count));
                 return ctx with { Last = objects.Select(TargetRef.Of).ToImmutableList() };
@@ -426,7 +426,7 @@ public static class Interpreter
             {
                 if (!Enum.TryParse<Zone>(change.To?.Zone, out var zone))
                     return Skipped(game, change, $"zone {change.To?.Zone}", ctx);
-                var objects = Resolver.Objects(change.Objects, ctx);
+                var objects = Resolver.ForEffect(change.Objects, ctx);
                 var controller = change.UnderControlOf is null ? (PlayerId?)null : Resolver.Players(change.UnderControlOf, ctx).FirstOrDefault(ctx.Controller);
                 var position = change.To.Position == nameof(Position.Top) ? 0 : change.To.Position == nameof(Position.Bottom) ? int.MaxValue : -1;
                 foreach (var id in objects)
@@ -446,7 +446,7 @@ public static class Interpreter
 
             case ShuffleInto shuffle:
             {
-                var objects = Resolver.Objects(shuffle.Cards, ctx);
+                var objects = Resolver.ForEffect(shuffle.Cards, ctx);
                 foreach (var id in objects)
                     game.MoveToZone(id, Zone.Library);
                 foreach (var owner in objects.Select(id => state.Object(id)?.Owner).Where(x => x is not null).Distinct())

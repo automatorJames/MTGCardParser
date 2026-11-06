@@ -154,6 +154,8 @@ public static class Reducer
                     next = next.WithPlayer(owner.WithZoneList(moved.To, list));
                 }
                 var entering = moved.To == Zone.Battlefield;
+                if (moved.From == Zone.Battlefield)
+                    next = next with { LastKnown = (next.LastKnown ?? ImmutableDictionary<ObjectId, GameObject>.Empty).SetItem(obj.Id, obj) };
                 next = next.WithObject(obj with
                 {
                     // A copy is a copy only while it stays where it became one.
