@@ -291,7 +291,7 @@ public sealed partial class Game
     /// <summary>Plans one additional cost: mana joins the spell's cost; other costs become actions done as it's cast. False when it can't be paid.</summary>
     bool PlanAdditional(Cost cost, PlayerId player, ObjectId spell, int x, ref ManaCost mana, List<Effect> actions, ImmutableHashSet<string>.Builder options)
     {
-        switch (cost)
+        switch (KeywordAbilities.CostOf(cost))
         {
             case PayMana symbols:
                 mana = mana.Plus(ManaCost.Parse(string.Concat(symbols.Symbols)));
@@ -343,7 +343,7 @@ public sealed partial class Game
     bool AdditionalPayable(Cost cost, PlayerId player, ObjectId spell, int x)
     {
         var ctx = new EffectContext(this, player, spell, new Dictionary<IrNode, ImmutableList<TargetRef>>(ReferenceEqualityComparer.Instance), x);
-        switch (cost)
+        switch (KeywordAbilities.CostOf(cost))
         {
             case PayMana symbols:
                 return ManaPayment.CanPay(State, player, ManaCost.Parse(string.Concat(symbols.Symbols)));
@@ -364,7 +364,7 @@ public sealed partial class Game
     public static readonly ImmutableHashSet<Type> PayableActions =
     [
         typeof(Optional), typeof(PayCost), typeof(ChoiceOf), typeof(Sequence), typeof(Sacrifice), typeof(Discard), typeof(Exile), typeof(Reveal), typeof(Tap),
-        typeof(Untap), typeof(ChangeZone), typeof(PutCounters), typeof(RemoveCounters), typeof(Mill), typeof(ChooseEffect),
+        typeof(Untap), typeof(ChangeZone), typeof(PutCounters), typeof(RemoveCounters), typeof(Mill), typeof(ChooseEffect), typeof(CollectEvidence),
     ];
 
     /// <summary>Whether <paramref name="player"/> can do <paramref name="action"/> as a cost now: enough to sacrifice, discard, exile, reveal, tap, return, mill, or counters to remove.</summary>
@@ -374,7 +374,7 @@ public sealed partial class Game
         var ctx = new EffectContext(this, player, source, new Dictionary<IrNode, ImmutableList<TargetRef>>(ReferenceEqualityComparer.Instance), x);
         int Count(Quantity quantity) => quantity is Special { Kind: "AnyNumber" } ? 0 : Quantities.Evaluate(quantity, ctx) ?? 1;
         int Matching(ObjectSelector objects, Func<GameObject, bool> also = null) =>
-            Resolver.Candidates(objects.Filter, ctx).Count(o => o.Id != spell && Filters.Matches(State, objects.Filter, o, player, source, objects.Other ? source : null, ctx: ctx) && (also?.Invoke(o) ?? true));
+            Resolver.Candidates(objects.Filter, ctx).Count(o => (o.Id != spell || o.Zone == Zone.Battlefield) && Filters.Matches(State, objects.Filter, o, player, source, objects.Other ? source : null, ctx: ctx) && (also?.Invoke(o) ?? true));
         int Wanted(ObjectSelector objects) =>
             objects.Count is Special { Kind: "AnyNumber" } ? 0 : objects.Quantifier == Quantifier.Count ? Count(objects.Count) : 1;
         var self = source is { } id ? State.Object(id) : null;
@@ -406,6 +406,8 @@ public sealed partial class Game
                         return Matching(objects) >= 1;
                     case ChooseEffect:
                         return true;
+                    case CollectEvidence evidence:
+                        return State.Player(player).Graveyard.Where(id => id != spell).Sum(id => State.Object(id)?.Card.ManaCost.ManaValue ?? 0) >= evidence.Total;
                     case Sacrifice { Objects: Self }:
                         return self is { Zone: Zone.Battlefield };
                     case Tap { Objects: Self }:

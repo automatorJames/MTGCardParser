@@ -65,4 +65,12 @@ public sealed class RoundTwelveTests(GrammarFixture fixture)
 
         Assert.All(MTGRulesIR.Lowering.NodeWalker.Nodes(ability).OfType<ChangeZone>(), x => Assert.IsType<ObjectSelector>(x.Objects));
     }
+
+    [Fact]
+    public void ItDoesntUntapIsWhatWasTapped()
+    {
+        var ability = fixture.LowerAbility("whenever this creature deals combat damage to a creature, tap that creature and it doesn't untap during its controller's next untap step.");
+
+        Assert.IsNotType<Self>(Assert.Single(MTGRulesIR.Lowering.NodeWalker.Nodes(ability).OfType<DoesntUntap>()).Objects);
+    }
 }

@@ -204,6 +204,8 @@ public static class Filters
             },
             // "A card at random": how it's picked (Resolver), not which cards qualify.
             "Manner" => true,
+            // "Abilities", "an ability": the kind of thing, read with what it's an ability of.
+            "AbilitiesWord" => true,
             "Position" => true,
             "Provenance" => true,
             "AttachedBy" => true,

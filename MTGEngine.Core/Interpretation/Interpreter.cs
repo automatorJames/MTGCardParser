@@ -975,6 +975,22 @@ public static class Interpreter
                 return ctx;
             }
 
+            // Collect evidence: exile cards from your graveyard, the greatest mana values first, until their total is enough.
+            case CollectEvidence evidence:
+            {
+                var total = 0;
+                List<TargetRef> exiled = [];
+                foreach (var card in state.Player(ctx.Controller).Graveyard.Select(state.Object).Where(x => x is not null && x.Id != ctx.Source).OrderByDescending(x => x.Card.ManaCost.ManaValue).ToList())
+                {
+                    if (total >= evidence.Total)
+                        break;
+                    game.MoveToZone(card.Id, Zone.Exile);
+                    total += card.Card.ManaCost.ManaValue;
+                    exiled.Add(TargetRef.Of(card.Id));
+                }
+                return ctx with { Affected = exiled.ToImmutableList() };
+            }
+
             case ExileForLater:
                 if (ctx.Source is { } warped)
                     game.ExileForLater(warped);

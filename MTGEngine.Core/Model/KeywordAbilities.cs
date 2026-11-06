@@ -9,6 +9,9 @@ public sealed record ExileForLater : Effect;
 /// <summary>Abilities <see cref="Objects"/> gain until end of turn (backup's "it gains the following abilities"), unless it's this object itself.</summary>
 public sealed record GrantUntilEndOfTurn(Selector Objects, IReadOnlyList<Ability> Abilities) : Effect;
 
+/// <summary>Collect evidence N: exiling cards from your graveyard with total mana value N or more.</summary>
+public sealed record CollectEvidence(int Total) : Effect;
+
 /// <summary>Discarding the card whose ability this is (cycling).</summary>
 public sealed record DiscardThis : Cost;
 
@@ -224,6 +227,19 @@ public static class KeywordAbilities
                 break;
         }
     }
+
+    /// <summary>A keyword cost as a cost the engine pays: "blight 1" puts a -1/-1 counter on a creature you control, "collect evidence 3" exiles cards from your graveyard. Any other cost as it is.</summary>
+    public static Cost CostOf(Cost cost) =>
+        cost switch
+        {
+            KeywordCost { Keyword: { Keyword: "Blight", Amount: Fixed { Value: var blight } } } =>
+                new ActionCost(new PutCounters(new ObjectSelector(Quantifier.Any, new ObjectFilter(Kinds: [new Term("Creature", "CardType")], Controller: new Controlled(You))), new CounterSpec("-1/-1", new Fixed(blight)))),
+            KeywordCost { Keyword: { Keyword: "CollectEvidence", Amount: Fixed { Value: var evidence } } } => new ActionCost(new CollectEvidence(evidence)),
+            _ => cost,
+        };
+
+    /// <summary>The keyword costs <see cref="CostOf"/> turns into costs the engine pays.</summary>
+    public static bool CostHandled(KeywordCost cost) => CostOf(cost) is not KeywordCost;
 
     /// <summary>The kind "affinity for artifacts / equipment / forests" counts, read from the keyword's parameter.</summary>
     static Term AffinityKind(string parameter)

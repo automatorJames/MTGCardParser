@@ -109,4 +109,33 @@ public sealed class EngineRoundNineteenTests
         Assert.Equal(4, traits.Power);
         Assert.True(traits.HasKeyword("Haste"));
     }
+
+    [Fact]
+    public void StingSlingerBlightsToActivate()
+    {
+        var game = Started("Mountain", new GreedyAgent(attacks: false));
+        Lands(game, "Mountain", 2);
+        Put(game, Cards.Named("Sting-Slinger"), 0);
+        Put(game, Cards.Vanilla("Bears", "{1}{G}", 2, 2), 0);
+
+        game.PlayTurn(new PlayerId(0));
+
+        Assert.Equal(18, game.P1().Life);
+        Assert.Equal(1, game.BattlefieldOf(0).Sum(x => x.CountersOf("-1/-1")));
+    }
+
+    [Fact]
+    public void ForensicResearcherCollectsEvidence()
+    {
+        var game = Started("Island", new GreedyAgent(attacks: false));
+        Put(game, Cards.Named("Forensic Researcher"), 0);
+        for (var i = 0; i < 3; i++)
+            Put(game, Cards.Named("Shock"), 0, Zone.Graveyard);
+        var bears = Put(game, Cards.Vanilla("Bears", "{1}{G}", 2, 2), 1);
+
+        game.PlayTurn(new PlayerId(0));
+
+        Assert.True(game.State.Object(bears).Tapped);
+        Assert.Equal(3, game.State.Objects.Values.Count(x => x.Zone == Zone.Exile));
+    }
 }

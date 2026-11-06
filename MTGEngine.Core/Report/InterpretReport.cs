@@ -134,7 +134,7 @@ public static class InterpreterSupport
 
     static readonly HashSet<Type> _costs =
     [
-        typeof(PayMana), typeof(TapSelf), typeof(UntapSelf), typeof(PayLife), typeof(ActionCost), typeof(CompoundCost), typeof(CostChoice),
+        typeof(PayMana), typeof(TapSelf), typeof(UntapSelf), typeof(PayLife), typeof(ActionCost), typeof(CompoundCost), typeof(CostChoice), typeof(KeywordCost),
     ];
 
     static readonly HashSet<Type> _predicates =
@@ -168,7 +168,7 @@ public static class InterpreterSupport
     static readonly HashSet<string> _qualifierVocabularies =
     [
         "CardType", "CreatureType", "LandType", "PermanentSubtype", "PlaneswalkerType", "ArtifactType", "EnchantmentType", "Supertype", "ManaColor",
-        "ColorCount", "Colorfulness", "TapState", "CombatState", nameof(ObjectKind), "Distinction", "Keyword", "AttachedBy", "Kind", "Position", "Provenance", "TokenWord", "CounterKind", "CardGroup", "CountSuffix", "Manner",
+        "ColorCount", "Colorfulness", "TapState", "CombatState", nameof(ObjectKind), "Distinction", "Keyword", "AttachedBy", "Kind", "Position", "Provenance", "TokenWord", "CounterKind", "CardGroup", "CountSuffix", "Manner", "AbilitiesWord",
         "LeftoverCards", "AffectedThisWay", "DamageHistory", "ThisWayAction", "SpellOrdinal", "SpellCountPeriod", "AbilityCategory",
     ];
 
@@ -404,6 +404,7 @@ public static class InterpreterSupport
             WasCastWith { Twice: true } => "WasCastWith.Twice",
             WasCastWith cast when cast.How is not ("Kicked" or "AdditionalCost") => $"WasCastWith.{cast.How}",
             Targets { Spell: not (Self or Reference { Text: "it" }) } => "Targets.Spell",
+            KeywordCost keywordCost when !KeywordAbilities.CostHandled(keywordCost) => "KeywordCost",
             CastBy cast when cast.Relation is not ("Control" or "Cast") || cast.Relation == "Cast" && (cast.ThisTurn || cast.From is not null || cast.During is not null) => $"CastBy.{cast.Relation}{(cast.ThisTurn ? ".ThisTurn" : "")}{(cast.From is not null ? ".From" : "")}",
             Timing timing when !Game.TimingKinds.Contains(timing.Kind) => $"Timing.{timing.Kind}",
             PayCost { Plus: not null } => "PayCost.Plus",

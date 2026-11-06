@@ -19,7 +19,10 @@ public static class ManaPayment
         bool Use(Playable use) => use.Verb switch
         {
             "Cast" => purpose?.Spell is { } spell && (use.What is not ObjectSelector { Filter: var filter } || Filters.Matches(state, filter with { Zone = null }, spell with { Zone = Zone.Stack }, controller, sourceId)),
-            "Activate" => purpose?.Activating is not null,
+            // "Activate an ability of an elemental": the ability's source fits.
+            "Activate" => purpose?.Activating is { } activating
+                && (use.What is not ObjectSelector { Filter.With: { } with } || with.OfType<Related>().FirstOrDefault(r => r.Relation == Relation.AbilityOf) is not { To: ObjectSelector { Filter: { } of } }
+                    || Filters.Matches(state, of with { Zone = null }, activating, controller, sourceId)),
             _ => false,
         };
         return restriction.Rule == "NotFor" ? !restriction.Uses.Any(Use) : restriction.Uses.Any(Use);

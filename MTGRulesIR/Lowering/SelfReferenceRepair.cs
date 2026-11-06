@@ -35,6 +35,11 @@ public static class SelfReferenceRepair
             var step = steps[i];
             if (i > 0 && step is ChangeZone { Objects: Self } move && FindsOtherCards(steps[i - 1]))
                 step = move with { Objects = _thoseCards };
+            // "Tap that creature and it doesn't untap …", "destroy that creature. it can't be regenerated": "it" is what was just tapped or destroyed.
+            if (i > 0 && step is DoesntUntap { Objects: Self } held && steps[i - 1] is Tap { Objects: not (Self or null) } tapped)
+                step = held with { Objects = tapped.Objects };
+            if (i > 0 && step is CantBeRegenerated { Objects: Self } doomed && steps[i - 1] is Destroy { Objects: not (Self or null) } destroyed)
+                step = doomed with { Objects = destroyed.Objects };
             if (found)
                 step = (Effect)Rewrite(step, node => node is Reference { Text: "it" or "it's" } it && (it.Binding is null || !local.Contains(it.Binding)) ? _thoseCards : node);
             if (!ReferenceEquals(step, steps[i]))

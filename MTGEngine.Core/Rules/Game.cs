@@ -701,7 +701,7 @@ public sealed partial class Game
     static int EnergyIn(PayMana mana) => mana.Symbols.Count(IsEnergy);
 
     static IEnumerable<Cost> Flatten(IEnumerable<Cost> costs) =>
-        costs.SelectMany(x => x is CompoundCost compound ? Flatten(compound.Parts) : [x]);
+        costs.SelectMany(x => x is CompoundCost compound ? Flatten(compound.Parts) : [KeywordAbilities.CostOf(x)]);
 
     IEnumerable<GameObject> SacrificeCandidates(Sacrifice sacrifice, PlayerId player, ObjectId source)
     {
