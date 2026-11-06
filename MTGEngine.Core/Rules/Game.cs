@@ -1305,6 +1305,8 @@ public sealed partial class Game
     {
         for (var i = 0; i < count; i++)
         {
+            if (Dredged(player))
+                continue;
             var library = State.Player(player).Library;
             Emit(new Drew(player, library.Count > 0 ? library[0] : null));
         }

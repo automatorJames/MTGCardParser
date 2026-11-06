@@ -3,7 +3,7 @@ namespace MTGEngine.Core;
 /// <summary>Keyword actions as effects: scry, surveil, investigate, bolster, proliferate, explore, adapt, monstrosity, populate.</summary>
 public static class KeywordActions
 {
-    public static readonly HashSet<string> Supported = ["Scry", "Surveil", "Investigate", "Bolster", "Proliferate", "Explore", "Adapt", "Monstrosity", "Populate", "Fateseal", "Connive", "Learn", "Clash", "Discover", "Manifest", "ManifestDread"];
+    public static readonly HashSet<string> Supported = ["Scry", "Surveil", "Investigate", "Bolster", "Proliferate", "Explore", "Adapt", "Monstrosity", "Populate", "Fateseal", "Connive", "Learn", "Clash", "Discover", "Manifest", "ManifestDread", "Cascade"];
 
     public static EffectContext Execute(KeywordAction action, EffectContext ctx)
     {
@@ -114,7 +114,9 @@ public static class KeywordActions
                 }
                 // Discover N: exile from the top until a nonland card with mana value N or less; cast it free or put it into
                 // your hand; the rest go on the bottom in a random order.
+                // Cascade: the same, for a nonland card that costs less than the spell; one not cast goes on the bottom too.
                 case "Discover":
+                case "Cascade":
                 {
                     List<ObjectId> exiled = [];
                     ObjectId? found = null;
@@ -130,8 +132,13 @@ public static class KeywordActions
                     }
                     if (found is { } discovered)
                     {
-                        if (!(game.Decide(new YesNo(ctx.Controller, $"Discover: cast {ctx.State.Object(discovered).Card.Name} without paying its mana cost?")).Yes && game.CastFree(discovered, ctx.Controller)))
-                            game.MoveToZone(discovered, Zone.Hand);
+                        if (!(game.Decide(new YesNo(ctx.Controller, $"{keyword.Keyword}: cast {ctx.State.Object(discovered).Card.Name} without paying its mana cost?")).Yes && game.CastFree(discovered, ctx.Controller)))
+                        {
+                            if (keyword.Keyword == "Cascade")
+                                exiled.Add(discovered);
+                            else
+                                game.MoveToZone(discovered, Zone.Hand);
+                        }
                     }
                     foreach (var id in exiled.OrderBy(_ => game.Rng.Next()).ToList())
                         game.MoveToZone(id, Zone.Library, position: int.MaxValue);

@@ -96,6 +96,8 @@ public sealed partial class Game
         foreach (var cost in AdditionalCostsOf(card))
             if (!PlanAdditional(cost, player, id, x, ref mana, actions, options))
                 return;
+        if (!PlanCasualty(card, player, id, ref mana, actions, options))
+            return;
 
         List<Effect> effects = [];
         ImmutableDictionary<string, ImmutableList<TargetRef>> bindings = null;

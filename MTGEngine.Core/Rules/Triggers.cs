@@ -52,6 +52,10 @@ public static class Triggers
                 yield return new PendingTrigger(storm, new TriggeredAbility(new NamedEvent("Storm"), new CopySpell(new Self(), new Fixed(before_), NewTargets: true)), null, stormItem.Controller);
         }
 
+        if (evt is SpellCast { Item: { Spell: { } castId } castItem } && after.Object(castId) is { Zone: Zone.Stack } cast)
+            foreach (var pending in Game.CastKeywordTriggers(cast, castItem.Controller))
+                yield return pending;
+
         // A saga's chapter abilities trigger as lore counters reach their numbers.
         if (evt is CountersChanged { Kind: "lore", Delta: > 0 } lore && after.Object(lore.Object) is { Zone: Zone.Battlefield } saga)
         {

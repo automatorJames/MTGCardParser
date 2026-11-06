@@ -1,6 +1,6 @@
 namespace MTGEngine.Tests;
 
-/// <summary>The twenty-first engine round: scavenge, embalm, eternalize, transmute, modular, unleash, mentor, evolve, extort, split second, totem armor, clash in a spell, escape, retrace.</summary>
+/// <summary>The twenty-first engine round: scavenge, embalm, eternalize, transmute, modular, unleash, mentor, evolve, extort, split second, totem armor, clash in a spell, escape, retrace, cascade, dredge, casualty.</summary>
 public sealed class EngineRoundTwentyOneTests
 {
     /// <summary>Greedy, but activates an ability before casting a spell.</summary>
@@ -243,5 +243,50 @@ public sealed class EngineRoundTwentyOneTests
         Assert.Equal(Zone.Graveyard, game.State.Object(victim).Zone);
         Assert.Equal(Zone.Graveyard, game.State.Object(crime).Zone);
         Assert.Empty(game.P0().Hand);
+    }
+
+    [Fact]
+    public void ArdentPleaCascadesIntoACheaperSpell()
+    {
+        var game = Started("Plains", new GreedyAgent(attacks: false));
+        Lands(game, "Plains", 2);
+        Lands(game, "Island", 1);
+        var bears = Put(game, Cards.Vanilla("Bears", "{1}{G}", 2, 2), 0, Zone.Hand);
+        game.MoveToZone(bears, Zone.Library, new PlayerId(0), position: 1);
+        var plea = Put(game, Cards.Named("Ardent Plea"), 0, Zone.Hand);
+
+        game.PlayTurn(new PlayerId(0));
+
+        Assert.Equal(Zone.Battlefield, game.State.Object(plea).Zone);
+        Assert.Equal(Zone.Battlefield, game.State.Object(bears).Zone);
+        // The plains exiled above the bears went to the bottom.
+        Assert.Equal(20, game.P0().Library.Count);
+    }
+
+    [Fact]
+    public void DakmorSalvageDredgesInsteadOfADraw()
+    {
+        var game = Started("Swamp", new GreedyAgent(attacks: false));
+        var salvage = Put(game, Cards.Named("Dakmor Salvage"), 0, Zone.Graveyard);
+
+        game.Draw(new PlayerId(0), 1);
+
+        Assert.Equal(Zone.Hand, game.State.Object(salvage).Zone);
+        Assert.Equal(18, game.P0().Library.Count);
+        Assert.Equal(2, game.P0().Graveyard.Count);
+    }
+
+    [Fact]
+    public void IllicitShipmentIsCopiedForItsCasualty()
+    {
+        var game = Started("Swamp", new GreedyAgent(attacks: false));
+        Lands(game, "Swamp", 5);
+        var brute = Put(game, Cards.Vanilla("Brute", "{2}{B}", 3, 3), 0);
+        Put(game, Cards.Named("Illicit Shipment"), 0, Zone.Hand);
+
+        game.PlayTurn(new PlayerId(0));
+
+        Assert.Equal(Zone.Graveyard, game.State.Object(brute).Zone);
+        Assert.Equal(18, game.P0().Library.Count);
     }
 }
