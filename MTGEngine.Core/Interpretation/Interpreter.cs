@@ -1208,7 +1208,7 @@ public static class Interpreter
                 var payer = Payer(unless, ctx);
                 var paid = false;
                 if (payer is { } who && !state.Player(who).Lost)
-                    switch (unless.Payment.Cost)
+                    switch (KeywordAbilities.CostOf(unless.Payment.Cost))
                     {
                         case PayMana mana:
                         {
@@ -1436,7 +1436,7 @@ public static class Interpreter
             {
                 var payer = pay.Player is null ? ctx.Controller : Resolver.Players(pay.Player, ctx).FirstOrDefault(ctx.Controller);
                 var paid = false;
-                switch (pay.Cost)
+                switch (KeywordAbilities.CostOf(pay.Cost))
                 {
                     case PayMana energy when energy.Symbols.All(x => x.Equals("{e}", StringComparison.OrdinalIgnoreCase)):
                     {

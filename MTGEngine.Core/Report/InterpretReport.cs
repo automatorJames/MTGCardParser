@@ -365,7 +365,7 @@ public static class InterpreterSupport
             KeywordAction action when action.Actions.Any(x => !KeywordActions.Supported.Contains(x.Keyword)) => $"KeywordAction.{action.Actions.First(x => !KeywordActions.Supported.Contains(x.Keyword)).Keyword}",
             KeywordAction { Other: { Count: > 0 } } => "KeywordAction.Other",
             UnlessPaid { Payment.Cost: ActionCost { Action: var unlessAction } } when !Game.PayableActions.Contains(unlessAction.GetType()) => $"UnlessPaid[ActionCost.{unlessAction.GetType().Name}]",
-            UnlessPaid { Payment.Cost: not (PayMana or PayLife or ActionCost) } unless => $"UnlessPaid[{unless.Payment.Cost?.GetType().Name}]",
+            UnlessPaid { Payment.Cost: not (PayMana or PayLife or ActionCost) } unless when KeywordAbilities.CostOf(unless.Payment.Cost) is not (PayMana or PayLife or ActionCost) => $"UnlessPaid[{unless.Payment.Cost?.GetType().Name}]",
             UnlessPaid { Payment.PerEach: not null, Payment.Cost: not PayMana } => "UnlessPaid.PerEach",
             CombatRestriction { Modifiers: { Count: > 0 } modifiers } when modifiers.Any(x => x is not ("Alone" or "Except")) => "CombatRestriction.Modifiers",
             CombatRestriction { By: not (null or Self or ObjectSelector) } => "CombatRestriction.By",
