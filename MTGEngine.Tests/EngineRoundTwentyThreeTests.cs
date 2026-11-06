@@ -602,4 +602,19 @@ public sealed class EngineRoundTwentyThreeTests
         Assert.Equal(Zone.Graveyard, game.State.Object(bears).Zone);
         Assert.Equal(Zone.Hand, game.State.Object(wyrm).Zone);
     }
+
+    [Fact]
+    public void DictateOfKarametraDoublesTheLandsMana()
+    {
+        var game = Started("Forest", new GreedyAgent(attacks: false));
+        Put(game, Cards.Named("Dictate of Karametra"), 0);
+        Lands(game, "Forest", 2);
+        Put(game, Cards.Vanilla("Bears", "{1}{G}", 2, 2), 0, Zone.Hand);
+
+        game.PlayTurn(new PlayerId(0));
+
+        // Two forests make four mana with the dictate.
+        Assert.Contains(game.Log.OfType<ManaAdded>(), x => x.Player == new PlayerId(0) && x.Color == Color.Green);
+        Assert.True(game.Log.OfType<ManaAdded>().Where(x => x.Player == new PlayerId(0)).Sum(x => x.Amount) >= 4);
+    }
 }

@@ -777,6 +777,23 @@ public static class Interpreter
                                 game.Skip(option, "no chosen color");
                             break;
                         }
+                        // "That player adds one mana of any type that land produced": a kind it could produce.
+                        case ManaChoice { Choice: "AnyTypeProduced", Producer: { } producer } produced:
+                        {
+                            var count = Quantities.Evaluate(produced.Count, ctx) ?? 1;
+                            var producers = Resolver.Objects(producer, ctx).Select(x => state.Object(x)).Where(x => x is not null).ToList();
+                            var kinds = producers.SelectMany(x => ManaPayment.Produces(state, x)).Distinct().ToList();
+                            if (kinds.Count == 0)
+                                break;
+                            // The mana goes to whoever tapped the permanent for it ("that player adds …").
+                            var who = producers[0].Controller;
+                            var kind = kinds.Count == 1 ? kinds[0] : kinds[Math.Clamp(game.Decide(new ChooseOne(who, "Choose a kind of mana", kinds.Select(x => x?.ToString() ?? "Colorless").ToImmutableList())).Index, 0, kinds.Count - 1)];
+                            if (kind is { } color)
+                                game.Emit(new ManaAdded(who, color, count));
+                            else
+                                game.Emit(new ManaAdded(who, null, count));
+                            break;
+                        }
                         // "Add two mana in any combination of colors": a color for each.
                         case ManaChoice { Choice: "AnyCombination" } combination:
                         {

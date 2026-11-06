@@ -123,6 +123,31 @@ public static class ManaPayment
         return sources.ToImmutableList();
     }
 
+    /// <summary>The kinds of mana a permanent's mana abilities could produce (a basic land type's color, the symbols it adds; null for colorless), tapped or not.</summary>
+    public static ImmutableHashSet<Color?> Produces(GameState state, GameObject obj)
+    {
+        var traits = Characteristics.Of(state, obj);
+        var kinds = ImmutableHashSet.CreateBuilder<Color?>();
+        foreach (var subtype in traits.Subtypes)
+            if (Colors.OfBasicLandType(subtype) is { } basic)
+                kinds.Add(basic);
+        foreach (var ability in traits.Abilities.OfType<ActivatedAbility>())
+            if ((ability.Effect is LetVariable { Effect: AddMana inner } ? inner : ability.Effect) is AddMana add)
+                foreach (var option in add.Options)
+                    switch (option)
+                    {
+                        case ManaAmount mana:
+                            foreach (var symbol in mana.Symbols)
+                                if (SymbolColor(symbol) is { Known: true } known)
+                                    kinds.Add(known.Color);
+                            break;
+                        case ManaChoice { Choice: "AnyColor" or "AnyOneColor" or "AnyCombination" }:
+                            kinds.UnionWith(Colors.All.Select(x => (Color?)x));
+                            break;
+                    }
+        return kinds.ToImmutable();
+    }
+
     static (bool Known, Color? Color) SymbolColor(string symbol)
     {
         var inner = symbol.Trim('{', '}');

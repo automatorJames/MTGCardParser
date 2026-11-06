@@ -336,7 +336,7 @@ public static class InterpreterSupport
             ZoneRef zone when !Enum.TryParse<Zone>(zone.Zone, out _) => $"ZoneRef.{zone.Zone}",
             ZoneRef { Position: not (null or "Top" or "Bottom" or "TopOrBottom") } zone => $"ZoneRef.Position.{zone.Position}",
             PutCounters { Counters.Kind: null } => "PutCounters.Kind",
-            ManaChoice { Choice: not ("AnyColor" or "AnyOneColor" or "AnyCombination" or "TheChosenColor") } choice => $"ManaChoice.{choice.Choice}",
+            ManaChoice { Choice: not ("AnyColor" or "AnyOneColor" or "AnyCombination" or "TheChosenColor" or "AnyTypeProduced") } choice => $"ManaChoice.{choice.Choice}",
             Destroy { Manner: not (null or "CantBeRegenerated") } destroy => $"Destroy.{destroy.Manner}",
             Exile { Until: not (null or UntilThisLeaves) } => "Exile.Until",
             CombatEncounterEvent encounter when !Triggers.EncounterKinds.Contains(encounter.Encounter) => $"CombatEncounterEvent.{encounter.Encounter}",

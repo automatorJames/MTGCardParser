@@ -1246,6 +1246,9 @@ public sealed partial class Game
 
                 // The modes are chosen as it goes on the stack, then the chosen modes' targets.
                 var (effect, bindings) = ResolveModes(trigger.Ability.Effect, controller, source: trigger.Source.Id);
+                // "Whenever a player taps a land for mana, … that land": the land is what the subject's binding names.
+                if (trigger.Bound is { } bound && trigger.Ability.Trigger is ObjectEvent { Subject: ObjectSelector { Binding: { } subjectBinding } })
+                    bindings = (bindings ?? ImmutableDictionary<string, ImmutableList<TargetRef>>.Empty).SetItem(subjectBinding, [TargetRef.Of(bound)]);
                 var slots = TargetSlots.Of([effect]).ToList();
                 var targets = ChooseTargetsFor(slots, controller, trigger.Source.Id);
                 if (targets is null)

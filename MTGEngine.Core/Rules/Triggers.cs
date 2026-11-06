@@ -1,7 +1,7 @@
 namespace MTGEngine.Core;
 
 /// <summary>A triggered ability that has triggered: its source, the ability, and what it triggered on.</summary>
-public sealed record PendingTrigger(GameObject Source, TriggeredAbility Ability, TargetRef? Subject, PlayerId Controller, DelayedTrigger Delayed = null, int AbilityIndex = -1);
+public sealed record PendingTrigger(GameObject Source, TriggeredAbility Ability, TargetRef? Subject, PlayerId Controller, DelayedTrigger Delayed = null, int AbilityIndex = -1, ObjectId? Bound = null);
 
 /// <summary>Matches the IR's trigger events against the game's events.</summary>
 public static class Triggers
@@ -31,7 +31,7 @@ public static class Triggers
                         yield return new PendingTrigger(source, ability, other, source.Controller);
                 }
                 else if (Match(ability.Trigger, evt, source, after, before) is { } matched && matched.Fires)
-                    yield return new PendingTrigger(source, ability, matched.Subject, source.Controller);
+                    yield return new PendingTrigger(source, ability, matched.Subject, source.Controller, Bound: matched.Bound);
         }
 
         // "When you cycle this card" works from wherever the card went.
@@ -88,7 +88,8 @@ public static class Triggers
         }
     }
 
-    sealed record Matched(bool Fires, TargetRef? Subject = null);
+    /// <summary>Whether a trigger fires, what it's about, and (when that's a player) the object its subject's selector matched ("that land").</summary>
+    sealed record Matched(bool Fires, TargetRef? Subject = null, ObjectId? Bound = null);
 
     static bool Victim(TargetRef target, PlayerId criminal, GameState state) =>
         target.IsPlayer ? target.Player != criminal
@@ -379,7 +380,7 @@ public static class Triggers
                 "IsTurnedFaceUp" when evt is TurnedFace { FaceDown: false } turnedUp =>
                     Subject(trigger, turnedUp.Object, source, after, before),
                 "IsTappedForMana" when evt is TappedForMana tappedForMana =>
-                    Subject(trigger, tappedForMana.Object, source, after, before) is { Fires: true } forMana ? forMana with { Subject = TargetRef.Of(tappedForMana.Player) } : null,
+                    Subject(trigger, tappedForMana.Object, source, after, before) is { Fires: true } forMana ? forMana with { Subject = TargetRef.Of(tappedForMana.Player), Bound = tappedForMana.Object } : null,
                 "BecomesTarget" when TargetsOf(evt) is { Count: > 0 } targeted && TargetedBy(trigger, ItemOf(evt), source, after) =>
                     targeted.Where(x => x.IsObject).Select(x => Subject(trigger, x.Object.Value, source, after, before)).FirstOrDefault(x => x is { Fires: true }) is { } hit
                         ? hit with { Subject = ItemOf(evt)?.Spell is { } spell ? TargetRef.Of(spell) : hit.Subject }
