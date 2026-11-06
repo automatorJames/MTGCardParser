@@ -51,6 +51,8 @@ public static class Quantities
             }
             case CountOf count:
                 return Resolver.Targets(count.Of, ctx).Count;
+            case ColorsSpentToCast:
+                return ctx.Source is { } spent && ctx.State.Object(spent)?.SpentToCast is { } pool ? Colors.All.Count(c => pool.Of(c) > 0) : 0;
             // "You gain life equal to the life lost this way": what the step before did.
             case AmountThisWay { Kind: "LifeLost" or "DamageDealt" or "DamagePrevented" }:
                 return ctx.LastAmount;

@@ -858,9 +858,9 @@ public sealed partial class Game
         bindings = (bindings ?? ImmutableDictionary<string, ImmutableList<TargetRef>>.Empty).SetItem("#cost", paid.ToImmutableList());
 
         // A mana ability doesn't use the stack; "spend this mana only to …" after it restricts what it made.
-        if (effect is AddMana)
+        if (effect is AddMana or LetVariable { Effect: AddMana })
         {
-            Interpreter.Execute(effect, new EffectContext(this, player, source, new Dictionary<IrNode, ImmutableList<TargetRef>>(ReferenceEqualityComparer.Instance)));
+            Interpreter.Execute(effect, new EffectContext(this, player, source, new Dictionary<IrNode, ImmutableList<TargetRef>>(ReferenceEqualityComparer.Instance), Bindings: bindings.ToDictionary()));
             var abilities = Characteristics.AbilitiesOf(State, State.Object(source) ?? obj);
             if (index + 1 < abilities.Count && abilities[index + 1] is StaticAbility { Effect: ManaRestriction restriction })
                 RestrictRecentMana(player, restriction, source);

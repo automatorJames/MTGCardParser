@@ -229,7 +229,8 @@ public static class Interpreter
                     return Skipped(game, put, "counter kind unknown", ctx);
                 var objects = put.Objects is null ? (ctx.Source is { } s ? [s] : []) : Resolver.ForEffect(put.Objects, ctx);
                 foreach (var id in objects)
-                    game.Emit(new CountersChanged(id, kind, count));
+                    // Sunburst's counters are +1/+1 on a creature, charge counters on anything else.
+                    game.Emit(new CountersChanged(id, kind != "sunburst" ? kind : state.Object(id) is { } burst && burst.Card.IsCreature ? "+1/+1" : "charge", count));
                 return ctx with { Last = objects.Select(TargetRef.Of).ToImmutableList() };
             }
 

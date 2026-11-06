@@ -1,0 +1,94 @@
+namespace MTGEngine.Tests;
+
+/// <summary>The twentieth engine round: renown, sunburst, learn, crimes, restricted mana from "add x mana …, where x is …".</summary>
+public sealed class EngineRoundTwentyTests
+{
+    static ObjectId Put(Game game, CardDefinition card, int player, Zone zone = Zone.Battlefield)
+    {
+        var id = new ObjectId(game.State.NextObjectId);
+        var owner = new PlayerId(player);
+        game.Emit(new ObjectCreated(new GameObject(id, card, owner, owner, Zone.Hand)));
+        if (zone != Zone.Hand)
+            game.MoveToZone(id, zone, owner);
+        game.Emit(new SummoningSicknessCleared(owner));
+        return id;
+    }
+
+    static Game Started(string land, IDecisionMaker first) =>
+        GameExtensions.Started(Cards.DeckOf("A", (Cards.Basic(land), 20)), Cards.DeckOf("B", (Cards.Basic("Plains"), 20)), first, new PassiveAgent(), 0);
+
+    [Fact]
+    public void KnightBecomesRenownedOnce()
+    {
+        var game = Started("Plains", new GreedyAgent());
+        var knight = Put(game, Cards.Named("Knight of the Pilgrim's Road"), 0);
+
+        game.PlayTurn(new PlayerId(0));
+        Assert.Equal(17, game.P1().Life);
+        Assert.Equal(1, game.State.Object(knight).CountersOf("+1/+1"));
+
+        game.PlayTurn(new PlayerId(1));
+        game.PlayTurn(new PlayerId(0));
+        Assert.Equal(13, game.P1().Life);
+        Assert.Equal(1, game.State.Object(knight).CountersOf("+1/+1"));
+    }
+
+    [Fact]
+    public void SuntouchedMyrCountsTheColorsSpent()
+    {
+        var game = Started("Plains", new GreedyAgent(attacks: false));
+        Put(game, Cards.Basic("Plains"), 0);
+        Put(game, Cards.Basic("Island"), 0);
+        Put(game, Cards.Basic("Swamp"), 0);
+        var myr = Put(game, Cards.Named("Suntouched Myr"), 0, Zone.Hand);
+
+        game.PlayTurn(new PlayerId(0));
+
+        Assert.Equal(3, game.State.Object(myr).CountersOf("+1/+1"));
+    }
+
+    [Fact]
+    public void CramSessionLearnsByRummaging()
+    {
+        var game = Started("Swamp", new GreedyAgent(attacks: false));
+        Put(game, Cards.Basic("Swamp"), 0);
+        Put(game, Cards.Basic("Swamp"), 0);
+        var colossus = Put(game, Cards.Vanilla("Colossus", "{9}", 9, 9), 0, Zone.Hand);
+        Put(game, Cards.Named("Cram Session"), 0, Zone.Hand);
+
+        game.PlayTurn(new PlayerId(0));
+
+        Assert.Equal(24, game.P0().Life);
+        Assert.Equal(Zone.Graveyard, game.State.Object(colossus).Zone);
+        Assert.Equal(19, game.P0().Library.Count);
+    }
+
+    [Fact]
+    public void DeepmuckDesperadoMillsWhenYouCommitACrime()
+    {
+        var game = Started("Mountain", new GreedyAgent(attacks: false));
+        Put(game, Cards.Basic("Mountain"), 0);
+        Put(game, Cards.Named("Deepmuck Desperado"), 0);
+        Put(game, Cards.Named("Shock"), 0, Zone.Hand);
+
+        game.PlayTurn(new PlayerId(0));
+
+        Assert.Equal(18, game.P1().Life);
+        Assert.Equal(17, game.P1().Library.Count);
+    }
+
+    [Fact]
+    public void FoodChainMakesManaOnlyForCreatureSpells()
+    {
+        var game = Started("Forest", new GreedyAgent(attacks: false));
+        var chain = Put(game, Cards.Named("Food Chain"), 0);
+        Put(game, Cards.Vanilla("Bears", "{1}{G}", 2, 2), 0);
+        game.Emit(new TurnBegan(1, new PlayerId(0)));
+        game.Emit(new StepBegan(Step.Main1, new PlayerId(0)));
+
+        game.Take(Assert.Single(game.LegalActions(new PlayerId(0)), x => x is ActivateAbility activate && activate.Source == chain), new PlayerId(0));
+
+        Assert.Equal(3, game.P0().RestrictedList.Sum(x => x.Amount));
+        Assert.True(game.P0().Pool.IsEmpty);
+    }
+}

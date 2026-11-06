@@ -222,7 +222,7 @@ public static class InterpreterSupport
             if (restrictions.Count == 0)
                 continue;
             // After a mana ability, or right after adding mana in a sequence ("add {r}{r}{r}. spend this mana only to …").
-            var kept = abilities[i] is StaticAbility { Effect: ManaRestriction } or SpellAbility { Effect: ManaRestriction } && i > 0 && abilities[i - 1] is ActivatedAbility { Effect: AddMana } or SpellAbility { Effect: AddMana }
+            var kept = abilities[i] is StaticAbility { Effect: ManaRestriction } or SpellAbility { Effect: ManaRestriction } && i > 0 && abilities[i - 1] is ActivatedAbility { Effect: AddMana or LetVariable { Effect: AddMana } } or SpellAbility { Effect: AddMana }
                 || MTGRulesIR.Lowering.NodeWalker.Nodes(abilities[i]).OfType<Sequence>().Any(s => s.Steps.Zip(s.Steps.Skip(1)).Any(p => p.First is AddMana && p.Second is ManaRestriction))
                     && restrictions.Count == MTGRulesIR.Lowering.NodeWalker.Nodes(abilities[i]).OfType<Sequence>().Sum(s => s.Steps.Zip(s.Steps.Skip(1)).Count(p => p.First is AddMana && p.Second is ManaRestriction));
             if (!kept)
@@ -318,7 +318,7 @@ public static class InterpreterSupport
             TriggeredAbility { Trigger: PlayerAction { Action: "AttackedWith" or "Activate" } } => null,
             TriggeredAbility { Trigger: PlayerAction or NamedEvent } trigger => $"TriggeredAbility[{trigger.Trigger.GetType().Name}]",
             Delayed { When: PlayerAction or NamedEvent } delayed => $"Delayed[{delayed.When.GetType().Name}]",
-            PlayerEvent playerEvent when playerEvent.Event is not ("GainsLife" or "LosesLife" or "GainsOrLosesLife" or "Attacks" or "DiscardsACard" or "CyclesOrDiscardsACard" or "CyclesACard" or "CyclesThisCard" or "DrawsSecondCardEachTurn" or "SacrificesAnotherPermanent" or "ScriesOrSurveils") => $"PlayerEvent.{playerEvent.Event}",
+            PlayerEvent playerEvent when playerEvent.Event is not ("GainsLife" or "LosesLife" or "GainsOrLosesLife" or "Attacks" or "DiscardsACard" or "CyclesOrDiscardsACard" or "CyclesACard" or "CyclesThisCard" or "DrawsSecondCardEachTurn" or "SacrificesAnotherPermanent" or "ScriesOrSurveils" or "CommitsACrime") => $"PlayerEvent.{playerEvent.Event}",
             Qualifier { Vocabulary: "PermanentDesignation" } designation when !Filters.Designations.Contains(designation.Quality) => $"Qualifier[PermanentDesignation.{designation.Quality}]",
             Term { Vocabulary: "PermanentDesignation" } designation when !Filters.Designations.Contains(designation.Value) => $"Term[PermanentDesignation.{designation.Value}]",
             Qualifier qualifier when qualifier.Vocabulary != "PermanentDesignation" && !_qualifierVocabularies.Contains(qualifier.Vocabulary ?? "") => $"Qualifier[{qualifier.Vocabulary}]",

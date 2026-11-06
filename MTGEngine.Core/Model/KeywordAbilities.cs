@@ -12,6 +12,9 @@ public sealed record GrantUntilEndOfTurn(Selector Objects, IReadOnlyList<Ability
 /// <summary>"Max speed —": the ability works while its controller's speed is 4.</summary>
 public sealed record AtMaxSpeed : Condition;
 
+/// <summary>Sunburst's count: the colors of mana spent to cast the object.</summary>
+public sealed record ColorsSpentToCast : Quantity;
+
 /// <summary>Collect evidence N: exiling cards from your graveyard with total mana value N or more.</summary>
 public sealed record CollectEvidence(int Total) : Effect;
 
@@ -47,7 +50,7 @@ public static class KeywordAbilities
     }
 
     /// <summary>The keyword actions a spell's keyword line does as it resolves ("scry 1.").</summary>
-    public static readonly ImmutableHashSet<string> Actions = ["Scry", "Surveil", "Investigate", "Proliferate", "Fateseal", "Populate", "Bolster", "Explore", "Adapt"];
+    public static readonly ImmutableHashSet<string> Actions = ["Scry", "Surveil", "Investigate", "Proliferate", "Fateseal", "Populate", "Bolster", "Explore", "Adapt", "Learn"];
 
     /// <summary>The abilities each keyword line stands for, after the line; a spell's keyword actions as part of the spell.</summary>
     public static IEnumerable<Ability> Expand(IEnumerable<Ability> abilities, bool spell)
@@ -179,6 +182,16 @@ public static class KeywordAbilities
                     new PutCounters(new Self(), new CounterSpec("+1/+1", new Fixed(amount))),
                     new CreateTokens(new TokenSpec(Types: ["Artifact", "Creature"], Subtypes: ["Servo"], Power: new Fixed(1), Toughness: new Fixed(1)), new Fixed(amount)),
                 ]));
+                break;
+            // Renown N: when it deals combat damage to a player, if it isn't renowned, N +1/+1 counters and it becomes renowned.
+            case "Renown" when keyword.Amount is Fixed:
+                yield return new TriggeredAbility(new ObjectEvent(new Self(), ["DealsCombatDamageToAPlayer"]),
+                    new Sequence([new PutCounters(new Self(), new CounterSpec("+1/+1", new Fixed(amount))), new PutCounters(new Self(), new CounterSpec("renowned", new Fixed(1)))]),
+                    new HasCountersCondition(new Self(), new CounterSpec("renowned", null), Negated: true));
+                break;
+            // Sunburst: it enters with a +1/+1 counter (a charge counter if it isn't a creature) for each color of mana spent to cast it.
+            case "Sunburst" when !spell:
+                yield return new ReplacementAbility(new EntersBattlefield(new Self(), With: [new PutCounters(new Self(), new CounterSpec("sunburst", new ColorsSpentToCast()))]));
                 break;
             // Offspring: paid as it's cast (see Game), a 1/1 token copy of it as it enters.
             case "Offspring" when keyword.Cost is not null:

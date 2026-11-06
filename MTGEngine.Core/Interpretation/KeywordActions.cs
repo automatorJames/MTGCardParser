@@ -3,7 +3,7 @@ namespace MTGEngine.Core;
 /// <summary>Keyword actions as effects: scry, surveil, investigate, bolster, proliferate, explore, adapt, monstrosity, populate.</summary>
 public static class KeywordActions
 {
-    public static readonly HashSet<string> Supported = ["Scry", "Surveil", "Investigate", "Bolster", "Proliferate", "Explore", "Adapt", "Monstrosity", "Populate", "Fateseal", "Connive"];
+    public static readonly HashSet<string> Supported = ["Scry", "Surveil", "Investigate", "Bolster", "Proliferate", "Explore", "Adapt", "Monstrosity", "Populate", "Fateseal", "Connive", "Learn"];
 
     public static EffectContext Execute(KeywordAction action, EffectContext ctx)
     {
@@ -88,6 +88,18 @@ public static class KeywordActions
                 {
                     foreach (var opponent in ctx.State.OpponentsOf(ctx.Controller).ToList())
                         Scry(game, opponent, amount, toGraveyard: false, chooser: ctx.Controller);
+                    break;
+                }
+                // Learn: there's no sideboard to get a lesson from, so it's "you may discard a card. if you do, draw a card".
+                case "Learn":
+                {
+                    var hand = ctx.State.Player(ctx.Controller).Hand;
+                    if (hand.Count > 0 && game.Decide(new YesNo(ctx.Controller, "Learn: discard a card to draw a card?")).Yes)
+                    {
+                        var pick = game.Decide(new ChooseTargets(ctx.Controller, "Learn: discard", hand.Select(TargetRef.Of).ToImmutableList(), 1, 1)).Targets?.FirstOrDefault(x => x.IsObject && hand.Contains(x.Object.Value));
+                        game.Discard(ctx.Controller, pick?.Object ?? hand[0]);
+                        game.Draw(ctx.Controller, 1);
+                    }
                     break;
                 }
                 // Connive: draw a card, then discard a card; if a nonland card was discarded, the conniver gets a +1/+1 counter.

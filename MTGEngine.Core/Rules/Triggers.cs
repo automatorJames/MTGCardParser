@@ -80,6 +80,10 @@ public static class Triggers
 
     sealed record Matched(bool Fires, TargetRef? Subject = null);
 
+    static bool Victim(TargetRef target, PlayerId criminal, GameState state) =>
+        target.IsPlayer ? target.Player != criminal
+            : state.Object(target.Object.Value) is { } obj && (obj.Zone is Zone.Battlefield or Zone.Stack ? obj.Controller != criminal : obj.Owner != criminal);
+
     static StackItem ItemOf(GameEvent evt) =>
         evt switch
         {
@@ -212,6 +216,11 @@ public static class Triggers
 
             case PlayerEvent { Event: "SacrificesAnotherPermanent" } sacrifices when evt is Sacrificed sacrificed:
                 return new Matched(PlayerIs(sacrifices.Player, sacrificed.Player, source) && sacrificed.Object != source.Id, TargetRef.Of(sacrificed.Object));
+
+            // "Whenever you commit a crime": a spell, an activated or a triggered ability of theirs targets an opponent, or
+            // something an opponent controls (or owns, in a graveyard).
+            case PlayerEvent { Event: "CommitsACrime" } crime when ItemOf(evt) is { } criminal && criminal.Targets.Any(x => Victim(x, criminal.Controller, after)):
+                return new Matched(PlayerIs(crime.Player, criminal.Controller, source), TargetRef.Of(criminal.Controller));
 
             case PlayerEvent { Event: "ScriesOrSurveils" } scries when evt is Scryed scryed:
                 return new Matched(PlayerIs(scries.Player, scryed.Player, source), TargetRef.Of(scryed.Player));
