@@ -1,6 +1,6 @@
 namespace MTGEngine.Tests;
 
-/// <summary>The twenty-third engine round: "that player" and "it" across a spell's sentences.</summary>
+/// <summary>The twenty-third engine round: "that player" and "it" across a spell's sentences; "attacks and isn't blocked", detain, skipping a turn, "one or two targets".</summary>
 public sealed class EngineRoundTwentyThreeTests
 {
     static ObjectId Put(Game game, CardDefinition card, int player, Zone zone = Zone.Battlefield)
@@ -89,5 +89,111 @@ public sealed class EngineRoundTwentyThreeTests
 
         Assert.Single(game.P1().Exile);
         Assert.Equal(21, game.P0().Life);
+    }
+
+    [Fact]
+    public void SwampMosquitoPoisonsWhenUnblocked()
+    {
+        var game = Started("Swamp", new GreedyAgent());
+        Put(game, Cards.Named("Swamp Mosquito"), 0);
+
+        game.PlayTurn(new PlayerId(0));
+
+        Assert.Equal(1, game.P1().Poison);
+    }
+
+    [Fact]
+    public void LyevDecreeDetainsUntilYourNextTurn()
+    {
+        var game = Started("Plains", new GreedyAgent(attacks: false));
+        Lands(game, "Plains", 2);
+        var bears = Put(game, Cards.Vanilla("Bears", "{1}{G}", 2, 2), 1);
+        Put(game, Cards.Named("Lyev Decree"), 0, Zone.Hand);
+
+        game.PlayTurn(new PlayerId(0));
+        Assert.True(Characteristics.Of(game.State, game.State.Object(bears)).Cant("Attack"));
+
+        game.PlayTurn(new PlayerId(1));
+        game.PlayTurn(new PlayerId(0));
+        Assert.False(Characteristics.Of(game.State, game.State.Object(bears)).Cant("Attack"));
+    }
+
+    [Fact]
+    public void ChronatogSkipsYourNextTurn()
+    {
+        var game = GameExtensions.Started(Cards.DeckOf("A", (Cards.Basic("Island"), 20)), Cards.DeckOf("B", (Cards.Basic("Plains"), 20)), new GreedyAgent(attacks: false), new PassiveAgent(), 0);
+        Put(game, Cards.Named("Chronatog"), 0);
+
+        game.Run(maxTurns: 3);
+
+        // P0's turn 1 activates it; P1 takes turn 2, and P0's next turn is skipped, so P1 takes turn 3 too.
+        Assert.Equal(new PlayerId(1), game.State.ActivePlayer);
+        Assert.Equal(3, game.State.Turn);
+    }
+
+    [Fact]
+    public void PredictivePreparationsTakesOneOrTwoTargets()
+    {
+        var game = Started("Plains", new GreedyAgent(attacks: false));
+        Lands(game, "Plains", 2);
+        var first = Put(game, Cards.Vanilla("Bears", "{1}{G}", 2, 2), 0);
+        var second = Put(game, Cards.Vanilla("Bears", "{1}{G}", 2, 2), 0);
+        Put(game, Cards.Named("Predictive Preparations"), 0, Zone.Hand);
+
+        game.PlayTurn(new PlayerId(0));
+
+        Assert.Equal(1, game.State.Object(first).CountersOf("+1/+1"));
+        Assert.Equal(1, game.State.Object(second).CountersOf("+1/+1"));
+    }
+
+    [Fact]
+    public void MinionsReturnBringsTheCreatureBackOnce()
+    {
+        var game = Started("Swamp", new GreedyAgent(attacks: false));
+        var bears = Put(game, Cards.Vanilla("Bears", "{1}{G}", 2, 2), 1);
+        var aura = Put(game, Cards.Named("Minion's Return"), 0, Zone.Hand);
+        game.MoveToZone(aura, Zone.Battlefield, new PlayerId(0), attachTo: bears);
+
+        game.Destroy(bears);
+        game.PlayTurn(new PlayerId(0));
+        Assert.Equal(Zone.Battlefield, game.State.Object(bears).Zone);
+        Assert.Equal(new PlayerId(0), game.State.Object(bears).Controller);
+        Assert.Equal(Zone.Graveyard, game.State.Object(aura).Zone);
+
+        game.Destroy(bears);
+        game.PlayTurn(new PlayerId(1));
+        Assert.Equal(Zone.Graveyard, game.State.Object(bears).Zone);
+    }
+
+    [Fact]
+    public void MinionsReturnDoesntLoopOnACreatureThatDiesAsItReturns()
+    {
+        var game = Started("Swamp", new GreedyAgent(attacks: false));
+        var husk = Put(game, Cards.Named("Guiding Hydra"), 1);
+        game.Emit(new CountersChanged(husk, "+1/+1", 1));
+        var aura = Put(game, Cards.Named("Minion's Return"), 0, Zone.Hand);
+        game.MoveToZone(aura, Zone.Battlefield, new PlayerId(0), attachTo: husk);
+
+        game.Destroy(husk);
+        game.PlayTurn(new PlayerId(0));
+
+        Assert.Equal(Zone.Graveyard, game.State.Object(husk).Zone);
+        Assert.Equal(Zone.Graveyard, game.State.Object(aura).Zone);
+    }
+
+    [Fact]
+    public void MinionsReturnIgnoresCreaturesItDoesntEnchant()
+    {
+        var game = Started("Swamp", new GreedyAgent(attacks: false));
+        var bears = Put(game, Cards.Vanilla("Bears", "{1}{G}", 2, 2), 1);
+        var other = Put(game, Cards.Vanilla("Elf", "{G}", 1, 1), 1);
+        var aura = Put(game, Cards.Named("Minion's Return"), 0, Zone.Hand);
+        game.MoveToZone(aura, Zone.Battlefield, new PlayerId(0), attachTo: bears);
+
+        game.Destroy(other);
+        game.PlayTurn(new PlayerId(0));
+
+        Assert.Equal(Zone.Graveyard, game.State.Object(other).Zone);
+        Assert.Equal(new PlayerId(1), game.State.Object(bears).Controller);
     }
 }

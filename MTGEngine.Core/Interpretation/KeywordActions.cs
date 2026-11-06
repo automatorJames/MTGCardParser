@@ -3,7 +3,7 @@ namespace MTGEngine.Core;
 /// <summary>Keyword actions as effects: scry, surveil, investigate, bolster, proliferate, explore, adapt, monstrosity, populate.</summary>
 public static class KeywordActions
 {
-    public static readonly HashSet<string> Supported = ["Scry", "Surveil", "Investigate", "Bolster", "Proliferate", "Explore", "Adapt", "Monstrosity", "Populate", "Fateseal", "Connive", "Learn", "Clash", "Discover", "Manifest", "ManifestDread", "Cascade"];
+    public static readonly HashSet<string> Supported = ["Scry", "Surveil", "Investigate", "Bolster", "Proliferate", "Explore", "Adapt", "Monstrosity", "Populate", "Fateseal", "Connive", "Learn", "Clash", "Discover", "Manifest", "ManifestDread", "Cascade", "Detain"];
 
     public static EffectContext Execute(KeywordAction action, EffectContext ctx)
     {
@@ -67,6 +67,14 @@ public static class KeywordActions
                     if (ctx.Source is { } adapting && ctx.State.Object(adapting) is { } creature && creature.CountersOf("+1/+1") == 0)
                         game.Emit(new CountersChanged(adapting, "+1/+1", amount));
                     break;
+                // Detain: until your next turn, the permanents can't attack or block and their activated abilities can't be activated.
+                case "Detain" when action.Objects is { } detained:
+                {
+                    var until = Interpreter.UntilTurn(new UntilPhase(new PhaseRef("Turn", Part: "End", Whose: new PlayerSelector(PlayerKind.You))), ctx.State, ctx.Controller) - 1;
+                    foreach (var id in Resolver.Objects(detained, ctx))
+                        game.Emit(new TemporaryEffectAdded(new TemporaryEffect(id, 0, 0, [], until, Restrictions: ["Attack", "Block", "Activate"])));
+                    break;
+                }
                 case "Monstrosity":
                     if (ctx.Source is { } monster && ctx.State.Object(monster) is { } beast && beast.CountersOf("monstrous") == 0)
                     {

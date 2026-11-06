@@ -57,8 +57,13 @@ public sealed partial class Game
             }
         }
 
-        if (legal.Count == 0)
+        if (attackers.Count == 0)
             return;
+        if (legal.Count == 0)
+        {
+            Emit(new BlockersDeclared(defender, ImmutableDictionary<ObjectId, ObjectId>.Empty));
+            return;
+        }
 
         var response = Decide(new ChooseBlockers(defender, legal.ToImmutableList()));
         var chosen = (response.Blocks ?? ImmutableList<(ObjectId, ObjectId)>.Empty)
@@ -112,17 +117,12 @@ public sealed partial class Game
         if (chosen.Count == 1 && Characteristics.Of(State, State.Object(chosen[0].Blocker)).Rules.Any(r => r.Cant == "Block" && r.Modifiers?.Contains("Alone") == true && RuleHolds(r)))
             chosen.Clear();
 
-        if (chosen.Count == 0)
-            return;
-
         // Menace: an attacker blocked by exactly one creature isn't blocked.
         foreach (var attacker in attackers)
             if (Characteristics.Of(State, attacker).HasKeyword("Menace") && chosen.Count(x => x.Attacker == attacker.Id) == 1)
                 chosen.RemoveAll(x => x.Attacker == attacker.Id);
 
-        if (chosen.Count == 0)
-            return;
-
+        // Declared even when nothing blocks: "whenever this creature attacks and isn't blocked" triggers then.
         Emit(new BlockersDeclared(defender, chosen.ToImmutableDictionary(x => x.Blocker, x => x.Attacker)));
     }
 

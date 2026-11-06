@@ -60,6 +60,14 @@ static class Simulate
                 var key = $"{ex.GetType().Name} {frame}";
                 var involved = string.Join(", ", game.State.Objects.Values.Where(x => x.Zone is Zone.Stack or Zone.Battlefield && !x.Card.IsLand).Select(x => x.Card.Name).Distinct().Take(8));
                 failures[key] = failures.TryGetValue(key, out var seen) ? (seen.Count + 1, seen.Seed, seen.Message, seen.Cards) : (1, gameSeed, ex.Message, involved);
+                // The failing game's events, with each object's card, for reading what went wrong.
+                if (Environment.GetEnvironmentVariable("SIMULATE_DUMP") is { Length: > 0 } dumpDir)
+                {
+                    Directory.CreateDirectory(dumpDir);
+                    var names = game.State.Objects.ToDictionary(x => x.Key, x => $"{x.Value.Card.Name} ({x.Value.Zone}, controller {x.Value.Controller}, attached to {x.Value.AttachedTo})");
+                    File.WriteAllLines(Path.Combine(dumpDir, $"game-{gameSeed}.log"),
+                        names.Select(x => $"#{x.Key.Value} = {x.Value}").Concat(game.Log.TakeLast(400).Select(x => x.ToString())));
+                }
             }
             // Each skip with the stack item resolving when it happened.
             var items = new Dictionary<int, string>();

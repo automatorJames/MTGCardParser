@@ -25,6 +25,9 @@ public sealed partial class Game
     public Random Rng { get; }
     public int Seed { get; }
     public Queue<PlayerId> ExtraTurns { get; } = new();
+
+    /// <summary>Turns each player will skip ("skip your next turn"), the next ones first.</summary>
+    public Dictionary<PlayerId, int> TurnsToSkip { get; } = new();
     public bool LastOptionalTaken { get; set; }
 
     /// <summary>Whether the last condition an effect checked held, for the "otherwise" after it.</summary>
@@ -143,6 +146,12 @@ public sealed partial class Game
             var next = ExtraTurns.Count > 0 ? ExtraTurns.Dequeue()
                 : State.Turn == 0 ? new PlayerId(0)
                 : State.NextInTurnOrder(State.ActivePlayer);
+            // "Skip your next turn": the turn goes to the next player instead (one skip per turn passed over).
+            for (var passes = 0; TurnsToSkip.GetValueOrDefault(next) > 0 && passes < State.Players.Length; passes++)
+            {
+                TurnsToSkip[next]--;
+                next = State.NextInTurnOrder(next);
+            }
             PlayTurn(next);
         }
     }

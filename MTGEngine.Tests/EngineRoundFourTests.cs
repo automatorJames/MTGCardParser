@@ -89,7 +89,7 @@ public sealed class EngineRoundFourTests
 
         game.PlayTurn(new PlayerId(0));
 
-        Assert.DoesNotContain(game.Log, x => x is BlockersDeclared);
+        Assert.DoesNotContain(game.Log, x => x is BlockersDeclared { Blocks.Count: > 0 });
         Assert.Equal(19, game.P1().Life);
     }
 
@@ -117,7 +117,7 @@ public sealed class EngineRoundFourTests
 
         game.PlayTurn(new PlayerId(0));
 
-        Assert.DoesNotContain(game.Log, x => x is BlockersDeclared);
+        Assert.DoesNotContain(game.Log, x => x is BlockersDeclared { Blocks.Count: > 0 });
         Assert.Equal(18, game.P1().Life);
     }
 

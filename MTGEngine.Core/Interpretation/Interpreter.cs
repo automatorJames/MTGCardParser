@@ -18,6 +18,15 @@ public static class Interpreter
         if (effect is not (null or Sequence or Conditional or Optional) && ChosenBinding(effect) is { } binding && !result.Binds.ContainsKey(binding)
             && (result.Affected is { Count: > 0 } ? result.Affected : result.Last) is { Count: > 0 } chosen && !ReferenceEquals(chosen, ctx.Last) && !ReferenceEquals(chosen, ctx.Affected))
             result.Binds[binding] = chosen;
+        // "Exile a nonland card from among them, then put the rest into your hand": the rest is what was among them and wasn't taken.
+        if (result.Rest is null && effect?.GetType().GetProperty("Objects")?.GetValue(effect) is ObjectSelector { Filter.With: { } with }
+            && with.OfType<Related>().FirstOrDefault(x => x.Relation == Relation.Among) is { } among)
+        {
+            var pool = Resolver.Targets(among.To, ctx) is { Count: > 0 } named ? named : ctx.Affected ?? ctx.Last ?? [];
+            var taken = (result.Affected ?? result.Last ?? []).ToHashSet();
+            if (pool.Count > 0 && !ReferenceEquals(result.Affected ?? result.Last, ctx.Affected ?? ctx.Last))
+                result = result with { Rest = pool.Where(x => !taken.Contains(x)).ToImmutableList() };
+        }
         return result;
     }
 
@@ -276,6 +285,16 @@ public static class Interpreter
                 var kind = put.Counters.Kind;
                 if (kind is null)
                     return Skipped(game, put, "counter kind unknown", ctx);
+                // "Defending player gets a poison counter": a player's counters.
+                if (put.Objects is PlayerSelector or Reference && Resolver.Targets(put.Objects, ctx).Where(x => x.IsPlayer).ToList() is { Count: > 0 } players)
+                {
+                    foreach (var player in players)
+                        if (kind == "poison")
+                            game.Emit(new PoisonChanged(player.Player.Value, count));
+                        else if (kind is "energy" or "e")
+                            game.Emit(new EnergyChanged(player.Player.Value, count));
+                    return ctx with { Last = players.ToImmutableList() };
+                }
                 var objects = put.Objects is null ? (ctx.Source is { } s ? [s] : []) : Resolver.ForEffect(put.Objects, ctx);
                 foreach (var id in objects)
                     // Sunburst's counters are +1/+1 on a creature, charge counters on anything else.
@@ -758,6 +777,15 @@ public static class Interpreter
                         }
                     }
                 return ctx with { Last = found.ToImmutableList(), Affected = revealed.ToImmutableList(), Rest = revealed.Except(found).ToImmutableList() };
+            }
+
+            case Skip { Phase.Phase: "Turn" } skipTurn:
+            {
+                var turns = Quantities.Evaluate(skipTurn.Turns, ctx) ?? 1;
+                foreach (var player in skipTurn.Player is null ? [ctx.Controller] : Resolver.Players(skipTurn.Player, ctx))
+                    game.TurnsToSkip[player] = game.TurnsToSkip.GetValueOrDefault(player) + turns;
+                game.Emit(new ChoiceMade(ctx.Controller, "skip turn", turns.ToString()));
+                return ctx;
             }
 
             case Skip skip when Game.SkippableStep(skip.Phase?.Phase) is { } skipped:
@@ -1474,7 +1502,7 @@ public static class Interpreter
                 ? (Resolver.Objects(among.To, ctx) is { Count: > 0 } named ? named : (ctx.Affected ?? ctx.Last ?? []).Where(x => x.IsObject).Select(x => x.Object.Value).ToImmutableList())
                 : Resolver.Objects(objects with { Quantifier = Quantifier.All }, ctx);
             var rest = objects.Filter with { With = objects.Filter.With?.Where(x => x != among).ToList() };
-            var candidates = pool.Where(id => state.Object(id) is { } obj && Filters.Matches(state, rest with { Zone = null }, obj with { Zone = Zone.Battlefield }, ctx.Controller, ctx.Source, ctx: ctx)).Select(TargetRef.Of).ToImmutableList();
+            var candidates = pool.Where(id => state.Object(id) is { } obj && Resolver.PoolMatches(rest with { Zone = null }, obj, ctx)).Select(TargetRef.Of).ToImmutableList();
             var count = Math.Min(objects.Quantifier == Quantifier.Count ? Quantities.Evaluate(objects.Count, ctx) ?? 1 : 1, candidates.Count);
             var picked = candidates.Count == 0 ? [] : game.Decide(new ChooseTargets(chooser, "Choose", candidates, objects.UpTo ? 0 : count, count)).Targets?.Where(candidates.Contains).Distinct().Take(count).ToImmutableList() ?? candidates.Take(count).ToImmutableList();
             if (picked.Count < count && !objects.UpTo)

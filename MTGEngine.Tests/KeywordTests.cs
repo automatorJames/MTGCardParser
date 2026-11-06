@@ -94,7 +94,7 @@ public sealed class KeywordTests
 
         game.PlayTurn(new PlayerId(0));
 
-        Assert.DoesNotContain(game.Log, x => x is BlockersDeclared);
+        Assert.DoesNotContain(game.Log, x => x is BlockersDeclared { Blocks.Count: > 0 });
         Assert.Equal(17, game.P1().Life);
     }
 

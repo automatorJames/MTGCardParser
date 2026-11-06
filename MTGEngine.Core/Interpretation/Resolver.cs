@@ -370,7 +370,9 @@ public static class TargetSlots
                 switch (node)
                 {
                     case ObjectSelector { Quantifier: Quantifier.Target } objects when Fresh(node, objects.Binding):
-                        yield return new TargetSlot(objects, objects.Binding, objects.UpTo || objects.Count is Special { Kind: "AnyNumber" }, objects.Count is Special { Kind: "AnyNumber" } ? int.MaxValue : (objects.Count as Fixed)?.Value ?? 1);
+                        // "Each of one or two target creatures": up to two, at least one.
+                        yield return new TargetSlot(objects, objects.Binding, objects.UpTo || objects.Count is Special { Kind: "AnyNumber" },
+                            objects.Count switch { Special { Kind: "AnyNumber" } => int.MaxValue, Special { Kind: "OneOrTwo" } => 2, Special { Kind: "OneTwoOrThree" } => 3, Fixed { Value: var n } => n, _ => 1 });
                         break;
                     // "Distribute three +1/+1 counters among one, two, or three target creatures": one slot for up to that many.
                     case DistributeCounters { Targeted: true, Among: ObjectSelector among } distribute when Fresh(among, among.Binding):

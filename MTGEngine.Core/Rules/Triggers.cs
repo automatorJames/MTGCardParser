@@ -337,6 +337,11 @@ public static class Triggers
                     AnySubject(trigger, blockers.Blocks.Keys, source, after),
                 "BecomesBlocked" or "BlocksOrBecomesBlocked" when evt is BlockersDeclared blocked =>
                     AnySubject(trigger, blocked.Blocks.Values.Distinct(), source, after),
+                // "Whenever this creature attacks and isn't blocked": once blockers are declared, an attacker none block.
+                "AttacksAndIsntBlocked" when evt is BlockersDeclared declared =>
+                    AnySubject(trigger, after.Battlefield.Where(x => x.Attacking && !declared.Blocks.Values.Contains(x.Id)).Select(x => x.Id).ToList(), source, after),
+                "BecomesMonstrous" when evt is CountersChanged { Kind: "monstrous", Delta: > 0 } monstrous =>
+                    Subject(trigger, monstrous.Object, source, after, before),
                 "BecomesTapped" when evt is Tapped tapped => Subject(trigger, tapped.Object, source, after, before),
                 "BecomesUntapped" when evt is Untapped untapped => Subject(trigger, untapped.Object, source, after, before),
                 "DealsCombatDamageToAPlayer" or "DealsCombatDamageToAPlayerOrPlaneswalker" or "DealsCombatDamageToAnOpponent" or "DealsCombatDamageToYou"
@@ -415,6 +420,10 @@ public static class Triggers
                     || Filters.Matches(after, zoneless, obj with { Zone = judgedIn }, source.Controller, source.Id, selector.Other ? source.Id : null);
                 if (fits && selector.Other && id == source.Id)
                     fits = false;
+                // "When enchanted creature dies", "whenever equipped creature attacks": the one this permanent is attached to
+                // (as it was before the event, since an attachment comes off what leaves the battlefield).
+                if (fits && selector.Quantifier == Quantifier.Attached)
+                    fits = (before ?? after).Object(source.Id)?.AttachedTo == id || after.Object(source.Id)?.AttachedTo == id;
                 break;
             }
             case Union union:
