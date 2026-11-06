@@ -3,7 +3,7 @@ namespace MTGEngine.Core;
 /// <summary>Keyword actions as effects: scry, surveil, investigate, bolster, proliferate, explore, adapt, monstrosity, populate.</summary>
 public static class KeywordActions
 {
-    public static readonly HashSet<string> Supported = ["Scry", "Surveil", "Investigate", "Bolster", "Proliferate", "Explore", "Adapt", "Monstrosity", "Populate", "Fateseal", "Connive", "Learn", "Clash", "Discover"];
+    public static readonly HashSet<string> Supported = ["Scry", "Surveil", "Investigate", "Bolster", "Proliferate", "Explore", "Adapt", "Monstrosity", "Populate", "Fateseal", "Connive", "Learn", "Clash", "Discover", "Manifest", "ManifestDread"];
 
     public static EffectContext Execute(KeywordAction action, EffectContext ctx)
     {
@@ -135,6 +135,31 @@ public static class KeywordActions
                     }
                     foreach (var id in exiled.OrderBy(_ => game.Rng.Next()).ToList())
                         game.MoveToZone(id, Zone.Library, position: int.MaxValue);
+                    break;
+                }
+                // Manifest: the top card of your library (or what's named) onto the battlefield face down as a 2/2 creature.
+                case "Manifest":
+                {
+                    var cards = action.Objects is { } named ? Resolver.Objects(named, ctx) : ctx.State.Player(ctx.Controller).Library.Take(amount).ToImmutableList();
+                    List<TargetRef> manifested = [];
+                    foreach (var card in cards.ToList())
+                        if (game.Manifest(card, ctx.Controller) is { } id)
+                            manifested.Add(TargetRef.Of(id));
+                    ctx = ctx with { Last = manifested.ToImmutableList(), Affected = manifested.ToImmutableList() };
+                    break;
+                }
+                // Manifest dread: look at the top two cards of your library, manifest one and put the other into your graveyard.
+                case "ManifestDread":
+                {
+                    var top = ctx.State.Player(ctx.Controller).Library.Take(2).ToImmutableList();
+                    if (top.Count == 0)
+                        break;
+                    var choice = top.Count == 1 ? null : game.Decide(new ChooseTargets(ctx.Controller, "Manifest dread: the card to manifest", top.Select(TargetRef.Of).ToImmutableList(), 1, 1)).Targets;
+                    var pick = choice?.Where(x => x.IsObject && top.Contains(x.Object.Value)).Select(x => x.Object.Value).FirstOrDefault() is { } chosen && top.Contains(chosen) ? chosen : top[0];
+                    foreach (var other in top.Where(x => x != pick).ToList())
+                        game.MoveToZone(other, Zone.Graveyard);
+                    if (game.Manifest(pick, ctx.Controller) is { } dread)
+                        ctx = ctx with { Last = [TargetRef.Of(dread)], Affected = [TargetRef.Of(dread)] };
                     break;
                 }
                 // Learn: there's no sideboard to get a lesson from, so it's "you may discard a card. if you do, draw a card".

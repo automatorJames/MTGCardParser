@@ -180,7 +180,8 @@ public static class Reducer
                     Attacking = false,
                     Blocking = null,
                     // A face-down spell becomes a face-down permanent; anything else that moves is face up.
-                    FaceDown = entering && moved.From == Zone.Stack && obj.FaceDown,
+                    // (A card manifested from the library enters face down too.)
+                    FaceDown = entering && moved.From is Zone.Stack or Zone.Library && obj.FaceDown,
                     ZoneChangeCount = obj.ZoneChangeCount + 1,
                     // A permanent spell keeps how it was cast; anything else is a new object without history.
                     CastWith = entering && moved.From == Zone.Stack ? obj.CastWith : null,

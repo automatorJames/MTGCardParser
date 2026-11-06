@@ -213,4 +213,21 @@ public sealed class EngineRoundTwentyTests
         game.PlayTurn(new PlayerId(1));
         Assert.False(game.State.Object(bears).Tapped);
     }
+
+    [Fact]
+    public void DissectionToolsManifestsDreadAndEquipsIt()
+    {
+        var deck = Cards.DeckOf("A", (Cards.Vanilla("Colossus", "{5}{G}", 6, 6), 1), (Cards.Basic("Forest"), 19));
+        var game = GameExtensions.Started(deck, Cards.DeckOf("B", (Cards.Basic("Plains"), 20)), new PassiveAgent(), new PassiveAgent(), 0);
+        var tools = Put(game, Cards.Named("Dissection Tools"), 0);
+
+        game.PlayTurn(new PlayerId(0));
+
+        var manifested = Assert.Single(game.BattlefieldOf(0), x => x.FaceDown);
+        Assert.Equal(manifested.Id, game.State.Object(tools).AttachedTo);
+        Assert.Single(game.P0().Graveyard);
+        var traits = Characteristics.Of(game.State, manifested);
+        Assert.Equal(4, traits.Power);
+        Assert.True(traits.HasKeyword("Deathtouch"));
+    }
 }

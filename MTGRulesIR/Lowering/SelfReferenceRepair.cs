@@ -15,6 +15,9 @@ public static class SelfReferenceRepair
 {
     static readonly ObjectSelector _thoseCards = new(Quantifier.Those, new ObjectFilter(Kinds: [new Term(nameof(ObjectKind.Card), nameof(ObjectKind))]));
 
+    /// <summary>What the step before made: the token created, the creature manifested.</summary>
+    static readonly ObjectSelector _thoseMade = new(Quantifier.Those, new ObjectFilter());
+
     public static Ability Repair(Ability ability) => (Ability)Rewrite(ability, Fix);
 
     static IrNode Fix(IrNode node) =>
@@ -32,9 +35,13 @@ public static class SelfReferenceRepair
         List<Effect> repaired = null;
         var local = steps.SelectMany(NodeWalker.Nodes).OfType<ObjectSelector>().Select(x => x.Binding).Where(x => x is not null).ToHashSet();
         var found = false;
+        var made = false;
         for (var i = 0; i < steps.Count; i++)
         {
             var step = steps[i];
+            // "Manifest dread, then attach this equipment to that creature", "create a 1/1 token, then attach this to it".
+            if (made)
+                step = (Effect)Rewrite(step, node => node is Reference { Text: "it" or "that creature" or "that token" } that && that.Binding is null ? _thoseMade : node);
             if (i > 0 && step is ChangeZone { Objects: Self } move && FindsOtherCards(steps[i - 1]))
                 step = move with { Objects = _thoseCards };
             // "Tap that creature and it doesn't untap …", "destroy that creature. it can't be regenerated": "it" is what was just tapped or destroyed.
@@ -50,6 +57,7 @@ public static class SelfReferenceRepair
                 repaired[i] = step;
             }
             found |= FindsOtherCards(steps[i]);
+            made = steps[i] is CreateTokens || steps[i] is KeywordAction { Actions: [{ Keyword: "Manifest" or "ManifestDread" or "Amass" }, ..] } || made && steps[i] is not (Reveal or LookAt or SearchLibrary);
         }
         return repaired;
     }
