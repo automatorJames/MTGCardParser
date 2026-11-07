@@ -68,6 +68,9 @@ public sealed record OpaquePredicate(string Text, string Glyph) : Predicate, IOp
 /// <summary>A "with …" qualifier naming keywords the objects have, or lack.</summary>
 public sealed record HasKeywords(IReadOnlyList<string> Keywords, bool Negated = false) : Predicate;
 
+/// <summary>A "with …" qualifier naming a keyword with its parameter: "with protection from black", "with toxic 1".</summary>
+public sealed record WithKeyword(KeywordInstance Keyword) : Predicate;
+
 /// <summary>A "with …" qualifier bounding a characteristic: "with power 2 or less".</summary>
 public sealed record CharacteristicBound(IReadOnlyList<string> Characteristics, Quantity Value, Comparison Comparison, bool Total = false) : Predicate;
 
@@ -101,6 +104,8 @@ public enum Relation
     ExiledWith,
     /// <summary>In the player's party: "creatures in your party".</summary>
     InPartyOf,
+    /// <summary>Haunted by the object (haunt): "the creature it haunts".</summary>
+    HauntedBy,
 }
 
 /// <summary>Objects in a <see cref="Relation"/> to another object or group.</summary>

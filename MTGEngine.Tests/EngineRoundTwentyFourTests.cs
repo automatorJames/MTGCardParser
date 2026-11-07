@@ -160,6 +160,21 @@ public sealed class EngineRoundTwentyFourTests
         Assert.Empty(game.State.DelayedTriggers);
     }
 
+    [Fact]
+    public void ACreatureAssigningDamageAsThoughUnblockedHitsTheDefender()
+    {
+        var game = Started("Forest", new GreedyAgent(), new GreedyAgent(attacks: false, blocks: true));
+        var wolf = new CardDefinition("Lone Wolf", ManaCost.Free, [], ["Creature"], ["Wolf"], 3, 3, null, [new StaticAbility(new AssignsDamageAsThoughUnblocked(new Self()))], [], [Color.Green]);
+        Put(game, wolf, 0);
+        var wall = Put(game, Cards.Vanilla("Wall", "{1}{W}", 0, 4), 1);
+
+        game.PlayTurn(new PlayerId(0));
+
+        Assert.Contains(game.Log.OfType<BlockersDeclared>(), x => x.Blocks.Count > 0);
+        Assert.Equal(17, game.P1().Life);
+        Assert.Equal(0, game.State.Object(wall).Damage);
+    }
+
     /// <summary>A black aura granting protection from black: it falls off unless it says the effect doesn't remove it.</summary>
     static CardDefinition DarkWard(bool exempt)
     {

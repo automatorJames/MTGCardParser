@@ -523,6 +523,17 @@ public static class Interpreter
                 return ctx;
             }
 
+            // "Target blocked creature assigns its combat damage this turn as though it weren't blocked."
+            case AssignsDamageAsThoughUnblocked unblocked when unblocked.Duration is not null:
+            {
+                var until = UntilTurn(unblocked.Duration, state, ctx.Controller);
+                if (until is null)
+                    return Skipped(game, unblocked, "duration not understood", ctx);
+                foreach (var id in unblocked.Objects is null or Self ? (ctx.Source is { } own ? [own] : []) : Resolver.Objects(unblocked.Objects, ctx))
+                    game.Emit(new TemporaryEffectAdded(Hold(new TemporaryEffect(id, 0, 0, [], until == -1 ? null : until, Restrictions: ["AssignsDamageAsThoughUnblocked"]), effect, ctx)));
+                return ctx;
+            }
+
             // "Gains all activated abilities of target creature until end of turn": those abilities, as of now.
             case GainAbilitiesOf gained when gained.Duration is not null:
             {

@@ -19,7 +19,7 @@ public sealed partial class Lowerer
         Rule<G.OptionalPayment>((g, ctx) => Lower(g.Payment, ctx) is PayCost pay ? new Optional(pay, pay.Player) : Lower(g.Payment, ctx));
         Rule<G.OptionalPayCost>((g, ctx) =>
             new PayCost(
-                CostOf(Lower(g.Cost, ctx), g.Cost, ctx),
+                g.Cost.GetResolvedValue() is G.EnergyAmount energy ? EnergyCostOf(energy, ctx) : CostOf(Lower(g.Cost, ctx), g.Cost, ctx),
                 Lower(g.PayOptionType, ctx) as Selector,
                 g.PerEach is null ? null : LowerAs<Quantity>(g.PerEach, ctx),
                 g.Plus is null ? null : Lower(g.Plus, ctx)));

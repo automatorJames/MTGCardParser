@@ -369,3 +369,12 @@ public sealed record GainAbilitiesOf(Selector Objects, Selector From, string Cat
 
 /// <summary>The Ward cycle's exception: the protection this aura grants doesn't make the aura fall off.</summary>
 public sealed record ProtectionDoesntRemoveThis : Effect;
+
+/// <summary>Blocked creatures that assign their combat damage to the player or planeswalker they attack anyway.</summary>
+public sealed record AssignsDamageAsThoughUnblocked(Selector Objects, Duration Duration = null) : Effect;
+
+/// <summary>Something players can't do: "players can't search libraries", "you can't get poison counters".</summary>
+public sealed record PlayerCant(Selector Player, string Action, Duration Duration = null) : Effect;
+
+/// <summary>Triggered abilities of some permanents triggering an additional time when a kind of event causes them to (Panharmonicon).</summary>
+public sealed record AdditionalTriggers(Selector Cause, string Event, Selector Source) : Effect;

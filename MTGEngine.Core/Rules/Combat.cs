@@ -229,6 +229,13 @@ public sealed partial class Game
                 continue;
             var blockers = state.Battlefield.Where(x => x.Blocking == attacker.Id).OrderBy(x => x.Id.Value).ToList();
 
+            // "Assigns its combat damage as though it weren't blocked": all of it to the defender.
+            if (blockers.Count > 0 && traits.Has("AssignsDamageAsThoughUnblocked"))
+            {
+                assignments.Add((attacker.Id, TargetRef.Of(_defender), power));
+                continue;
+            }
+
             if (blockers.Count == 0)
             {
                 // A blocked creature stays blocked when its blockers are gone; only trample gets its damage through.

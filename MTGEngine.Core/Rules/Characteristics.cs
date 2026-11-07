@@ -300,6 +300,9 @@ public sealed record Characteristics(
                 case AssignsDamageByToughness:
                     restrictions.Add("AssignsDamageByToughness");
                     break;
+                case AssignsDamageAsThoughUnblocked:
+                    restrictions.Add("AssignsDamageAsThoughUnblocked");
+                    break;
                 case GainAbilitiesOf gained:
                     abilities.AddRange(GainedAbilities(state, gained, EffectContext.Snapshot(state, source.Controller, source.Id)));
                     break;
@@ -434,6 +437,7 @@ public sealed record Characteristics(
             DoesntUntap { If: null } => [effect],
             MustBlock { Duration: null } => [effect],
             AssignsDamageByToughness { Duration: null } => [effect],
+            AssignsDamageAsThoughUnblocked { Duration: null } => [effect],
             GainAbilitiesOf { Duration: null } => [effect],
             Sequence sequence => sequence.Steps.SelectMany(Continuous),
             _ => [],
@@ -467,6 +471,7 @@ public sealed record Characteristics(
             // And blocking requirements (Game.DeclareBlockers).
             MustBlock must => must.Blockers ?? new Self(),
             AssignsDamageByToughness doran => doran.Objects ?? new Self(),
+            AssignsDamageAsThoughUnblocked unblocked => unblocked.Objects ?? new Self(),
             GainAbilitiesOf gained => gained.Objects ?? new Self(),
             _ => null,
         };

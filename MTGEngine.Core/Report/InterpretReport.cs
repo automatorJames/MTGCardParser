@@ -107,7 +107,7 @@ public static class InterpreterSupport
         typeof(CopySpell), typeof(DistributeCounters), typeof(MoveCounters), typeof(AssignsNoCombatDamage), typeof(ExchangeControl), typeof(Phasing), typeof(MustBlock), typeof(MustBeBlocked), typeof(DoubleCounters), typeof(DoubleStats), typeof(SwitchStats), typeof(ChangeTargets), typeof(CantBeActivated), typeof(CanBlock), typeof(CreateEmblem),
         typeof(FlipCoin), typeof(RollDice), typeof(CastAsThoughFlash), typeof(MustBlock), typeof(MayNotUntap), typeof(Skip), typeof(TurnFace),
         typeof(GainClassLevel), typeof(BecomeCopy), typeof(MayPlayFrom), typeof(ManaRestriction), typeof(ExtraLandPlays),
-        typeof(AssignsDamageByToughness), typeof(MaximumHandSize), typeof(NoMaximumHandSize), typeof(GainAbilitiesOf), typeof(ProtectionDoesntRemoveThis),
+        typeof(AssignsDamageByToughness), typeof(MaximumHandSize), typeof(NoMaximumHandSize), typeof(GainAbilitiesOf), typeof(ProtectionDoesntRemoveThis), typeof(AssignsDamageAsThoughUnblocked),
     ];
 
     static readonly HashSet<Type> _selectors =
@@ -141,7 +141,7 @@ public static class InterpreterSupport
     static readonly HashSet<Type> _predicates =
     [
         typeof(HasKeywords), typeof(HasStats), typeof(CharacteristicBound), typeof(CharacteristicCompared), typeof(HasExtreme), typeof(Distinct), typeof(Related), typeof(ActedOn), typeof(CastFrom), typeof(QualifierChoice), typeof(QualifiedKind),
-        typeof(CastBy), typeof(WithCounters), typeof(Satisfying), typeof(ChosenBy), typeof(OfChosen), typeof(Targeting), typeof(SharesCharacteristic), typeof(Named), typeof(InCombatWith), typeof(RelativeCharacteristic),
+        typeof(CastBy), typeof(WithCounters), typeof(Satisfying), typeof(ChosenBy), typeof(OfChosen), typeof(Targeting), typeof(SharesCharacteristic), typeof(Named), typeof(InCombatWith), typeof(RelativeCharacteristic), typeof(WithKeyword),
     ];
 
     static readonly HashSet<Type> _durations =
@@ -362,7 +362,9 @@ public static class InterpreterSupport
             CanAsThough asThough when Characteristics.AsThough(asThough) is null => $"CanAsThough.{asThough.Action}.{asThough.Keyword}",
             Remains remains when remains.State is not ("Tapped" or "Untapped" or "OnTheBattlefield" or "Exiled") => $"Remains.{remains.State}",
             GameOutcome { Result: not ("Win" or "Lose") } outcome => $"GameOutcome.{outcome.Result}",
-            AmountOfManaSpent { Kind: not null } spentOf => $"AmountOfManaSpent.{spentOf.Kind}",
+            AmountOfManaSpent { Kind: { } spentKind } when Colors.OfName(spentKind) is null => $"AmountOfManaSpent.{spentKind}",
+            AmountOfManaSpent { From: not null } => "AmountOfManaSpent.From",
+            AssignsDamageAsThoughUnblocked { Duration: { } duration } when !Keeps(duration) => $"AssignsDamageAsThoughUnblocked.Duration[{Describe(duration)}]",
             WasCast { During: { } castDuring } when !Conditions.CastDuringSupported(castDuring) => $"WasCast.During.{castDuring.Phase}",
             // A second mode count under a condition ("choose both instead") isn't read by the modal rules yet.
             Instead { Effect: ChooseModes } => "ChooseModes.Instead",
@@ -481,6 +483,7 @@ public static class InterpreterSupport
             GainControl { Duration: null } => true,
             ExtraLandPlays { EachTurn: true, Duration: null, Count: Fixed or Special { Kind: "AnyNumber" } } => true,
             AssignsDamageByToughness { Duration: null } => true,
+            AssignsDamageAsThoughUnblocked { Duration: null } => true,
             MaximumHandSize { RestOfGame: false } => true,
             NoMaximumHandSize { Duration: null } => true,
             GainAbilitiesOf { Duration: null, Category: "Activated" } => true,

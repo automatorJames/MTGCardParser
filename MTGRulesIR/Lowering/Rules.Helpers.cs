@@ -238,6 +238,7 @@ public sealed partial class Lowerer
         {
             Predicate predicate => predicate,
             Condition condition => new Satisfying(condition),
+            KeywordInstance keyword => new WithKeyword(keyword),
             StatsMod stats => new HasStats(stats.Power, stats.Toughness),
             DuringPhase during => new CastDuring(during.Phase),
             IOpaque opaque => new OpaquePredicate(opaque.Text, opaque.Glyph),

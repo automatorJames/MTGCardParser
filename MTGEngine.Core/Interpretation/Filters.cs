@@ -320,6 +320,9 @@ public static class Filters
                 }
                 finally { _comparing--; }
             }
+            // "With protection from black", "with toxic 1".
+            case WithKeyword with:
+                return KeywordAbilities.NamesOf(with.Keyword).All(traits.HasKeyword);
             // "With lesser power", "with greater mana value": compared with what the clause is about - the trigger's subject, else the ability's source.
             case RelativeCharacteristic relative:
             {

@@ -104,7 +104,7 @@ public static class Vocabularies
         ["HandSize.Verb"] = [typeof(G.HaveVerb)],
         ["HasCountersCondition.Tense"] = [typeof(Possession)],
         ["ObjectIs.Tense"] = [typeof(G.Assertion)],
-        ["BecomesAspect.Verb"] = [typeof(G.TypeCopula), typeof(G.Assertion), typeof(G.BecomeVerb)],
+        ["BecomesAspect.Verb"] = [typeof(G.TypeCopula), typeof(G.Assertion), typeof(G.BecomeVerb), typeof(G.ColorCopula)],
         ["Playable.Verb"] = [typeof(G.PlayVerb), typeof(UseVerb)],
         ["RevealUntil.Verb"] = [typeof(G.RevealOrExile)],
         ["PreventDamage.Kind"] = [typeof(G.DamageKind)],
@@ -133,7 +133,7 @@ public static class Vocabularies
         ["AdditionalPhase.Count"] = [typeof(G.AdditionalCount)],
         ["AmountThisWay.Kind"] = [typeof(G.ThisWayAmount)],
         ["HasDesignation.Designation"] = [typeof(G.PlayerDesignation)],
-        ["ChoiceMade.Choice"] = [typeof(G.CastingChoice)],
+        ["ChoiceMade.Choice"] = [typeof(G.CastingChoice), typeof(ChoiceWord)],
         ["HasKeywordsCondition.Keywords"] = [typeof(G.Keyword)],
         ["HasExtreme.Characteristic"] = [typeof(G.Characteristic)],
         ["HasExtreme.Which"] = [typeof(G.Superlative)],
@@ -142,7 +142,11 @@ public static class Vocabularies
         ["RelativeCharacteristic.Characteristic"] = [typeof(G.Characteristic)],
         ["DamagePortion.Kind"] = [typeof(G.DamageKind)],
         ["GainAbilitiesOf.Category"] = [typeof(AbilityCategory)],
-        ["AmountOfManaSpent.Kind"] = [typeof(G.SpentManaKind)],
+        ["AmountOfManaSpent.Kind"] = [typeof(G.SpentManaKind), typeof(G.ManaColor)],
+        ["PlayerCant.Action"] = [typeof(G.PlayerProhibition)],
+        ["AdditionalTriggers.Event"] = [typeof(G.TriggeringEvent)],
+        ["PayAnyAmount.Resource"] = [typeof(G.PaidResource)],
+        ["DrawCircumstance.Kind"] = [typeof(DrawCircumstanceKind)],
         ["DayNight.State"] = [typeof(G.DayNightState)],
     };
 
@@ -206,10 +210,16 @@ public enum Zone { Battlefield, Hand, Library, Graveyard, Exile, Stack, Command 
 public enum Comparison { Equal, Less, LessOrEqual, Greater, GreaterOrEqual }
 
 /// <summary>Kinds of object the lowering names itself, beside the grammar's card types: "card", "spell", "counter", "any target".</summary>
-public enum ObjectKind { Card, Spell, Any, Counter, Token, Permanent, Player, CardName, ManaSpent, Source, Ability, Cost, Door, Pile, Target, Copy }
+public enum ObjectKind { Card, Spell, Any, Counter, Token, Permanent, Player, CardName, ManaSpent, Source, Ability, Cost, Door, Pile, Target, Copy, Damage }
 
 /// <summary>Events the lowering names beyond the turn's: the last counter being removed.</summary>
-public enum EventKind { LastCounterRemoved, UnlockThisDoor, ClassBecomesLevel }
+public enum EventKind { LastCounterRemoved, UnlockThisDoor, ClassBecomesLevel, Expend, DayNightChanged }
+
+/// <summary>Choices made while casting that the grammar names only in text: tribute not paid.</summary>
+public enum ChoiceWord { TributeNotPaid }
+
+/// <summary>Circumstances of a draw a replacement names: all but the first draw of each draw step.</summary>
+public enum DrawCircumstanceKind { ExceptFirstDraw }
 
 /// <summary>Ways mana may be chosen beyond the grammar's: any combination of colors.</summary>
 /// <summary>Keyword actions the grammar names only in text, as keywords.</summary>

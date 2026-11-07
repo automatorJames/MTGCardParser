@@ -79,6 +79,7 @@ public sealed partial class Lowerer
             {
                 G.LifeQuantity life => new PayLife(QuantityOf(life.Quantity)),
                 G.ManaCost energy => new PayMana(energy.Items.Select(SymbolText).ToList()),
+                G.EnergyAmount energy => EnergyCostOf(energy, ctx),
                 var other => CostOf(Lower(other, ctx) is Quantity amount ? new PayLife(amount) : Lower(other, ctx), other, ctx),
             }, ctx.Subject));
         Rule<G.PerformsKeywordAction>((g, ctx) =>

@@ -244,8 +244,14 @@ public sealed record ThereAre(Selector Objects) : Condition;
 /// <summary>A pawprint cost: "{p}{p} — …".</summary>
 public sealed record PawprintCost(int Count) : Cost;
 
-/// <summary>How much mana, or mana of a kind ("{s}"), was spent to cast a spell, as an amount.</summary>
-public sealed record AmountOfManaSpent(Selector For, string Kind = null) : Quantity;
+/// <summary>How much mana - all of it, mana of a color or of snow ("{s}"), or mana from a kind of source ("mana from a cave") - was spent to cast a spell, as an amount.</summary>
+public sealed record AmountOfManaSpent(Selector For, string Kind = null, Selector From = null) : Quantity;
+
+/// <summary>A cost of any amount, the payer's choice: "pay any amount of mana", "pay any amount of life".</summary>
+public sealed record PayAnyAmount(string Resource) : Cost;
+
+/// <summary>A circumstance of a draw, as a replacement's condition: "except the first one you draw in each of your draw steps".</summary>
+public sealed record DrawCircumstance(string Kind) : Condition;
 
 /// <summary>Whether it's day, night, or neither.</summary>
 public sealed record DayNight(string State) : Condition;

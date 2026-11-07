@@ -159,10 +159,10 @@ public static class Quantities
             case Special { Kind: "All" }:
                 return int.MaxValue;
             // "The amount of mana spent to cast this spell".
-            case AmountOfManaSpent { Kind: null } spentOn:
+            case AmountOfManaSpent { From: null } spentOn when spentOn.Kind is null || Colors.OfName(spentOn.Kind) is not null:
             {
                 var paid = Resolver.Objects(spentOn.For ?? new Self(), ctx).Select(ctx.State.Object).Where(x => x?.SpentToCast is not null).ToList();
-                return paid.Count == 0 ? null : paid[0].SpentToCast.Total;
+                return paid.Count == 0 ? null : spentOn.Kind is { } colorName && Colors.OfName(colorName) is { } color ? paid[0].SpentToCast.Of(color) : paid[0].SpentToCast.Total;
             }
             case Bound bound:
                 return Evaluate(bound.Value, ctx);
