@@ -95,6 +95,7 @@ public sealed partial class Lowerer
         {
             if (Lower(g.Counters, ctx) is not CounterSpec counters)
                 return Opaque(typeof(Ability), ctx.TextOf(g), nameof(G.CountersPutTrigger));
+            // "When the seventh plan counter is put on this enchantment": the counters reaching that many.
             var period = g.Period?.GetResolvedValue();
             return new TriggeredAbility(
                 new ObjectEvent(

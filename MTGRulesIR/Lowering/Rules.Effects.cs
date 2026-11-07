@@ -173,9 +173,18 @@ public sealed partial class Lowerer
         {
             List<IrNode> rest = [];
             var by = Terms(g.By, ctx, rest);
+            List<Qualifier> qualifiers = [];
+            // "Aura spells", "abilities from artifact sources": the kind with its qualifiers (see TargetingObjects).
+            foreach (var node in rest.ToList())
+                if (node is ObjectFilter { Kinds: { } kinds } qualified)
+                {
+                    by.AddRange(kinds.Select(x => x.Value));
+                    qualifiers.AddRange(qualified.Qualifiers ?? []);
+                    rest.Remove(node);
+                }
             if (by.Count == 0 || rest.Count > 0)
                 return Opaque(typeof(Effect), ctx.TextOf(g), nameof(G.CantBeTargeted));
-            return new CantBeTargeted(ctx.Subject ?? new Self(), by, g.Whose is null ? null : Lower(g.Whose, ctx) as Controlled, g.Period is null ? null : new ThisTurn(g.Period.Period.ToString()));
+            return new CantBeTargeted(ctx.Subject ?? new Self(), by, g.Whose is null ? null : Lower(g.Whose, ctx) as Controlled, g.Period is null ? null : new ThisTurn(g.Period.Period.ToString()), OrNull(qualifiers));
         });
 
         Rule<G.CombatRestriction>((g, ctx) =>

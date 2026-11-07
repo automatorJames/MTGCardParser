@@ -56,7 +56,7 @@ public static class Vocabularies
         ["PhaseRef.Phase"] = [typeof(G.Phase)],
         ["PhaseRef.Part"] = [typeof(G.PhasePart)],
         ["Special.Kind"] = [typeof(G.Quantity), typeof(SpecialAmount), typeof(G.RepeatCount), typeof(G.LifeTotalValue)],
-        ["CantBeTargeted.By"] = [typeof(TargetingBy)],
+        ["CantBeTargeted.By"] = [typeof(TargetingBy), typeof(G.TargetingKind)],
         ["ManaChoice.Choice"] = [typeof(G.ManaChoice), typeof(ManaChoiceKind)],
         ["AddMana.Amount"] = [typeof(G.AddedManaAmount)],
         ["ManaRestriction.Rule"] = [typeof(G.ManaSpendingRule)],
@@ -73,7 +73,9 @@ public static class Vocabularies
         ["CharacteristicBound.Characteristics"] = [typeof(G.Characteristic)],
         ["CharacteristicOf.Characteristic"] = [typeof(G.Characteristic)],
         ["SetStats.Which"] = [typeof(G.PowerAndOrToughness)],
-        ["CounterSpec.Prefix"] = [typeof(G.CountPrefix)],
+        ["CounterSpec.Prefix"] = [typeof(G.CountPrefix), typeof(CounterPrefixWord)],
+        ["SharedController.Which"] = [typeof(G.SharedController)],
+        ["CombatantLimit.Action"] = [typeof(G.CombatAction)],
         ["CounterSpec.Bound"] = [typeof(G.CountComparison)],
         ["CompareControl.Bound"] = [typeof(G.CountBound)],
         ["Compared.Comparison"] = [typeof(G.MoreOrFewer)],
@@ -219,7 +221,7 @@ public enum ObjectKind { Card, Spell, Any, Counter, Token, Permanent, Player, Ca
 public enum EventKind { LastCounterRemoved, UnlockThisDoor, ClassBecomesLevel, Expend, DayNightChanged }
 
 /// <summary>Choices made while casting that the grammar names only in text: tribute not paid.</summary>
-public enum ChoiceWord { TributeNotPaid }
+public enum ChoiceWord { TributeNotPaid, RevealedCard }
 
 /// <summary>Circumstances of a draw a replacement names: all but the first draw of each draw step.</summary>
 public enum DrawCircumstanceKind { ExceptFirstDraw }
@@ -243,7 +245,10 @@ public enum EventSpan { ThisWay, ThisCombat, LastTurn }
 public enum ExtremeKind { Greatest, Least }
 
 /// <summary>Amounts named rather than counted, beyond the grammar's quantity words: "those" cards named earlier.</summary>
-public enum SpecialAmount { Those, ThatMuch, TimesKicked }
+public enum SpecialAmount { Those, ThatMuch, TimesKicked, TheDifference }
+
+/// <summary>Counter counts the grammar names only in text: the nth counter of a kind put on a permanent.</summary>
+public enum CounterPrefixWord { Nth }
 
 /// <summary>When an activated ability may be activated.</summary>
 public enum TimingKind { SorcerySpeed, InstantSpeed, OnceEachTurn, Once, During, Before, If, AnyPlayer, TimesEachTurn }

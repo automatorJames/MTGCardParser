@@ -4,13 +4,18 @@ namespace MTGRulesIR.Lowering;
 public sealed class CorpusLowering
 {
     readonly Lowerer _lowerer;
+    readonly LineOverrides _overrides;
 
-    public CorpusLowering(Lowerer lowerer = null)
+    /// <param name="overrides">Hand-written IR for literal-matched lines (see <see cref="LineOverrides"/>); the shipped set when null.</param>
+    public CorpusLowering(Lowerer lowerer = null, LineOverrides overrides = null)
     {
         _lowerer = lowerer ?? new Lowerer();
+        _overrides = overrides ?? LineOverrides.Default;
     }
 
     public Lowerer Lowerer => _lowerer;
+
+    public LineOverrides Overrides => _overrides;
 
     public CardRules Lower(ProcessedDocument document) =>
         LowerWithOrigins(document).Rules;
@@ -128,6 +133,9 @@ public sealed class CorpusLowering
             }
 
         abilities = SelfReferenceRepair.RepairLine(abilities.Select(SelfReferenceRepair.Repair).ToList());
+        // A line written by hand replaces whatever the grammar's literal gave; it is checked for closure like any other.
+        if (_overrides.TryGet(document.Name, line.SourceText.FormattedText, out var written))
+            abilities = written.Abilities.ToList();
         var opaque = abilities.SelectMany(OpaqueNodes.In).Select(x => x.Glyph).ToList();
         var open = abilities.SelectMany(OpenSlots.In).ToList();
         return (new LineRules(line.SourceText.LineIndex, line.SourceText.FormattedText, abilities, opaque, open), new LineOrigins(ctx.Origins, ctx.UnboundReferences));

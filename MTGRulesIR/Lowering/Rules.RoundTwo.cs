@@ -111,7 +111,13 @@ public sealed partial class Lowerer
         Rule<G.Reveal>((g, ctx) => new Reveal(g.Who is null ? Actor(ctx) : LowerAs<Selector>(g.Who, ctx), LowerAs<Selector>(g.What, ctx)));
         Rule<G.LookAt>((g, ctx) => new LookAt(Actor(ctx), LowerAs<Selector>(g.What, ctx)));
         Rule<G.ChooseCardFrom>((g, ctx) =>
-            new ChooseCards(Actor(ctx), QuantityOf(g.Count), FilterOf(ctx, qualifiers: g.Qualifiers, narrowing: [g.With, g.TrailingWith]) with { Kinds = [Kind("card")] }, LowerAs<Selector>(g.Source, ctx), ctx.TextOf(g)?.Contains("up to") == true));
+        {
+            var filter = FilterOf(ctx, qualifiers: g.Qualifiers, narrowing: [g.With, g.TrailingWith]) with { Kinds = [Kind("card")] };
+            // "Chooses a card from it": the zone an earlier phrase named ("reveals their hand").
+            if (g.Source.GetResolvedValue() is It it && ZoneOfReference(it, ctx) is { } zone)
+                return new ChooseCards(Actor(ctx), QuantityOf(g.Count), filter, new ObjectSelector(Quantifier.All, new ObjectFilter(Kinds: [Kind("card")], Zone: zone)), ctx.TextOf(g)?.Contains("up to") == true);
+            return new ChooseCards(Actor(ctx), QuantityOf(g.Count), filter, LowerAs<Selector>(g.Source, ctx), ctx.TextOf(g)?.Contains("up to") == true);
+        });
         Rule<G.AmongThem>((g, ctx) => LowerAs<Selector>(g.Cards, ctx));
         Rule<G.PlayersZones>((g, ctx) =>
             new ObjectSelector(Quantifier.All, new ObjectFilter(Kinds: [Kind("card")], Zone: new ZoneRef(Terms(g.Zones, ctx) is { Count: > 0 } zones ? string.Join("/", zones) : OpenSlots.Placeholder, LowerAs<Selector>(g.Whose, ctx)))));

@@ -33,6 +33,7 @@ public sealed partial class Lowerer
         RegisterRoundTwelve();
         RegisterRoundThirteen();
         RegisterRoundFourteen();
+        RegisterRoundFifteen();
     }
 
     /// <summary>The glyph (and vocabulary) types that have a lowering rule.</summary>
@@ -217,6 +218,8 @@ public sealed partial class Lowerer
         {
             null => null,
             Ability ability => ability,
+            // "Equip soldier {w}" on a line of its own: a keyword line.
+            KeywordInstance keyword => new KeywordLine([keyword]),
             EntersBattlefield or AsEventHappens or Replacement => new ReplacementAbility((Effect)node),
             Effect effect when IsSpell(ctx.Types) => new SpellAbility(effect),
             Pump { Duration: While lasting } pump => new StaticAbility(pump with { Duration = null }, lasting.Condition),
@@ -277,6 +280,7 @@ public sealed partial class Lowerer
             EventsDontTrigger => true,
             LifeTotalFloor => true,
             ActivateAnyTime { Duration: null } => true,
+            CombatantLimit => true,
             // "Untap all creatures you control during each other player's untap step": a standing rule, read at that step.
             Untap { During: DuringPhase } => true,
             Sequence sequence => sequence.Steps.All(IsContinuous),

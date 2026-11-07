@@ -326,6 +326,8 @@ public sealed partial class Lowerer
             G.LifeChangedThisTurn life => new Satisfying(new Happened(new PlayerEvent(who, life.Change == G.LifeChange.Gained ? nameof(G.PlayerEventKind.GainsLife) : nameof(G.PlayerEventKind.LosesLife)), life.Turn.ToString())),
             G.PastActionThisTurn past => new Satisfying(new Happened(new PlayerAction(who, past.Action.ToString(), past.What is null ? null : LowerAs<Selector>(past.What, ctx), past.FromHand), past.Turn.ToString())),
             G.SearchedThisWay => new Satisfying(new Happened(new PlayerAction(who, nameof(G.PastPlayerAction.SearchedLibrary)), nameof(EventSpan.ThisWay))),
+            // "Each opponent who can't", "each player who does": how they answered the demand before.
+            G.PlayerResponse response => new Satisfying(new OutcomeCondition(who, response switch { G.PlayerResponse.Cant => nameof(G.OutcomeResult.Cannot), G.PlayerResponse.Doesnt => nameof(G.OutcomeResult.DidNot), _ => nameof(G.OutcomeResult.Did) })),
             _ => new OpaquePredicate(ctx.TextOf(which), nameof(G.PlayerRelative)),
         };
     }

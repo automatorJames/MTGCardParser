@@ -87,6 +87,12 @@ public sealed class LoweringContext
         return depth > 0;
     }
 
+    /// <summary>The line's text before <paramref name="value"/>'s capture, when it was captured on this line; else null.</summary>
+    public string TextBefore(object value) =>
+        value is not null && _traces.TryGetValue(value, out var trace) && Line.SourceText?.FormattedText is { } text && trace.Index >= 0 && trace.Index <= text.Length
+            ? text[..trace.Index]
+            : null;
+
     /// <summary>The text <paramref name="value"/> was captured from, when it was captured on this line; else its name.</summary>
     public string TextOf(object value) =>
         value switch

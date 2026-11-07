@@ -57,6 +57,11 @@ internal class Program
                 Lower.RunText(args[1], args.ElementAtOrDefault(2));
                 break;
 
+            // overrides-todo rules.jsonl out.jsonl [count] [skip]: skeletons for the lines blocked only by card-specific literals, for hand-written IR overrides.
+            case "overrides-todo":
+                OverridesTodo.Run(args[1], args[2], int.TryParse(args.ElementAtOrDefault(3), out var todoCount) ? todoCount : 100, int.TryParse(args.ElementAtOrDefault(4), out var todoSkip) ? todoSkip : 0);
+                break;
+
             // interpret rules.jsonl [out-dir]: what of the lowered corpus the engine's interpreter can execute, and the node kinds in the way.
             case "interpret":
                 Interpret.Run(args[1], args.ElementAtOrDefault(2));

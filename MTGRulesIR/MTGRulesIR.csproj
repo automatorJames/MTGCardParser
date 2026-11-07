@@ -14,4 +14,8 @@
     <ProjectReference Include="..\MTGGlyphs\MTGGlyphs.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="Overrides\**\*.jsonl" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

@@ -71,6 +71,9 @@ public sealed record HasKeywords(IReadOnlyList<string> Keywords, bool Negated = 
 /// <summary>A "with …" qualifier naming a keyword with its parameter: "with protection from black", "with toxic 1".</summary>
 public sealed record WithKeyword(KeywordInstance Keyword) : Predicate;
 
+/// <summary>Objects that share a controller, or don't: "two target creatures controlled by the same player", "controlled by different players".</summary>
+public sealed record SharedController(string Which) : Predicate;
+
 /// <summary>A "with …" qualifier bounding a characteristic: "with power 2 or less".</summary>
 public sealed record CharacteristicBound(IReadOnlyList<string> Characteristics, Quantity Value, Comparison Comparison, bool Total = false) : Predicate;
 

@@ -364,6 +364,8 @@ public static class InterpreterSupport
             GameOutcome { Result: not ("Win" or "Lose") } outcome => $"GameOutcome.{outcome.Result}",
             AmountOfManaSpent { Kind: { } spentKind } when Colors.OfName(spentKind) is null => $"AmountOfManaSpent.{spentKind}",
             AmountThisWay { Kind: "ExcessDamage" } => "AmountThisWay.ExcessDamage",
+            CounterSpec { Prefix: "Nth" } => "CounterSpec.Nth",
+            CantBeTargeted { ByQualifiers: not null } => "CantBeTargeted.ByQualifiers",
             PayCost { Times: not null } => "PayCost.Times",
             AlternativeCost { Spells: not null } => "AlternativeCost.Spells",
             // "{x}, {t}: draw a card. x is …": the engine still lets the player choose X.

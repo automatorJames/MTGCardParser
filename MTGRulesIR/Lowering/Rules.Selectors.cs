@@ -140,7 +140,9 @@ public sealed partial class Lowerer
     /// <summary>A filter for cards outside the battlefield: their zone and owner, and the kinds and bounds that narrow them.</summary>
     ObjectFilter CardFilter(G.CardOutsideBattlefield card, LoweringContext ctx, object qualifiers = null)
     {
-        var filter = FilterOf(ctx, qualifiers: qualifiers, controller: card.Owner, zone: card.Zone, narrowing: [card.Bound, card.Narrowed]);
+        // "Exiles all cards from it": the zone an earlier phrase named.
+        object zone = card.Zone.GetResolvedValue() is It it ? ZoneOfReference(it, ctx) ?? (object)card.Zone : card.Zone;
+        var filter = FilterOf(ctx, qualifiers: qualifiers, controller: card.Owner, zone: zone, narrowing: [card.Bound, card.Narrowed]);
         return filter with { Kinds = [Kind("card")], Qualifiers = card.AtRandom == true ? [.. filter.Qualifiers ?? [], Q(Manner.AtRandom)] : filter.Qualifiers };
     }
 }

@@ -72,7 +72,7 @@ public sealed partial class Lowerer
             return new ChooseEffect(Actor(ctx), OrNull(kinds), OrNull(from), except);
         });
         Rule<G.PlayCard>((g, ctx) =>
-            new PlayCard(Actor(ctx), LowerAs<Selector>(g.Card, ctx), g.From?.ToString(), g.Free is not null, g.ByPaying is null ? null : Lower(g.ByPaying, ctx), DurationOf(Lower(g.Period, ctx))));
+            new PlayCard(Actor(ctx), LowerAs<Selector>(g.Card, ctx), g.From?.ToString(), g.Free is not null, g.ByPaying is null ? null : LowerAs<Cost>(g.ByPaying, ctx), DurationOf(Lower(g.Period, ctx))));
         Rule<G.IsOfType>((g, ctx) =>
         {
             List<IrNode> nodes = LowerAll(g.Kind, ctx);

@@ -150,8 +150,8 @@ public sealed record OpaqueManaOption(string Text, string Glyph) : ManaOption, I
 
 public sealed record ManaAmount(IReadOnlyList<string> Symbols, Quantity Count = null) : ManaOption;
 
-/// <summary>Objects that can't be the target of some spells or abilities.</summary>
-public sealed record CantBeTargeted(Selector Objects, IReadOnlyList<string> By = null, Controlled Controller = null, Duration Duration = null) : Effect;
+/// <summary>Objects that can't be the target of some spells or abilities; <paramref name="ByQualifiers"/> narrows them ("aura spells", "abilities from artifact sources").</summary>
+public sealed record CantBeTargeted(Selector Objects, IReadOnlyList<string> By = null, Controlled Controller = null, Duration Duration = null, IReadOnlyList<Qualifier> ByQualifiers = null) : Effect;
 
 /// <summary>
 /// A combat restriction: what the objects can't do ("attack", "block"), whom it concerns (<paramref name="By"/>: the
@@ -255,7 +255,7 @@ public sealed record Transform(Selector Objects) : Effect;
 public sealed record ChooseEffect(Selector Chooser, IReadOnlyList<string> Kinds = null, IReadOnlyList<Selector> From = null, IReadOnlyList<string> Except = null) : Effect;
 
 /// <summary>Playing or casting a card: "cast it without paying its mana cost", "play that card this turn".</summary>
-public sealed record PlayCard(Selector Player, Selector Card, string From = null, bool Free = false, IrNode ByPaying = null, Duration Duration = null) : Effect;
+public sealed record PlayCard(Selector Player, Selector Card, string From = null, bool Free = false, Cost ByPaying = null, Duration Duration = null) : Effect;
 
 /// <summary>Objects becoming, or being, some aspects: a color, a type, a designation; "is a black zombie in addition to its other colors and types", "becomes white until end of turn".</summary>
 public sealed record BecomesAspect(Selector Objects, IReadOnlyList<Term> Aspects, bool InAddition = false, bool Negated = false, Duration Duration = null, string Verb = null) : Effect;
@@ -402,3 +402,6 @@ public sealed record ControlPlayer(Selector Player, string Period) : Effect;
 
 /// <summary>Abilities that may be activated any time one could cast an instant, perhaps on any player's turn.</summary>
 public sealed record ActivateAnyTime(Selector Abilities, bool AnyPlayersTurn = false, Duration Duration = null) : Effect;
+
+/// <summary>A limit on how many creatures can attack or block each combat: "no more than two creatures can attack each combat".</summary>
+public sealed record CombatantLimit(Quantity Count, string Action) : Effect;
