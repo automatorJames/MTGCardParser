@@ -275,6 +275,12 @@ public sealed partial class Lowerer
                 case ObjectSelector { Filter.Kinds: [{ Value: nameof(ObjectKind.Ability) }] }:
                     other.Add(duration is null ? new LoseAllAbilities(ctx.Subject) : new Lasting(new LoseAllAbilities(ctx.Subject), duration));
                     break;
+                // "Gains all creature types", "loses all creature types".
+                case Animate { AllCreatureTypes: true } animate:
+                    other.Add(group.Verb == G.PermanentVerb.Lose
+                        ? new BecomesAspect(ctx.Subject, [new Term("AllCreatureTypes", nameof(CardAspectWord))], Negated: true, Duration: duration)
+                        : animate with { Objects = ctx.Subject ?? animate.Objects, Duration = duration });
+                    break;
                 default:
                     other.Add(EffectOf(buff));
                     break;

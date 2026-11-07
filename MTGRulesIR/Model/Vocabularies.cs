@@ -37,7 +37,7 @@ public static class Vocabularies
         ["ObjectEvent.Events"] = [typeof(G.PermanentEvent), typeof(ObjectEventKind), typeof(G.PastPermanentEvent), typeof(G.DepartureEvent), typeof(G.ObjectTurnEvent), typeof(G.EnteringWay), typeof(G.AsPermanentEvent), typeof(G.ThisWayAction), typeof(G.CardZoneEvent)],
         ["ObjectEvent.Only"] = [typeof(G.EventOccurrence), typeof(G.TurnOwner), typeof(G.TurnSpan), typeof(EventSpan)],
         ["ObjectEvent.By"] = [typeof(G.TargetingSource)],
-        ["PlayerEvent.Event"] = [typeof(G.PlayerEventKind)],
+        ["PlayerEvent.Event"] = [typeof(G.PlayerEventKind), typeof(PlayerEventWord)],
         ["PlayerEvent.Timing"] = [typeof(G.PlayerEventTiming)],
         ["NamedEvent.Kind"] = [typeof(G.TurnEvent), typeof(EventKind)],
         ["PlayerAction.Action"] = [typeof(UseVerb), typeof(G.PastPlayerAction), typeof(G.CardVerb), typeof(G.RevealOrExile), typeof(G.PlayerThisWayAction), typeof(G.PlayerTurnAction)],
@@ -100,7 +100,10 @@ public static class Vocabularies
         ["Scaled.Rounding"] = [typeof(G.Rounding)],
         ["Scaled.Factor"] = [typeof(G.ScaleFactor)],
         ["Adjusted.Factor"] = [typeof(G.AmountFactor)],
-        ["AlternativeCost.Replaces"] = [typeof(G.ReplacedOwnCost)],
+        ["AlternativeCost.Replaces"] = [typeof(G.ReplacedOwnCost), typeof(G.ReplaceableCostKind), typeof(G.Keyword)],
+        ["SetDayNight.State"] = [typeof(G.DayNightState)],
+        ["EventsDontTrigger.Events"] = [typeof(G.TriggeringEvent)],
+        ["ControlPlayer.Period"] = [typeof(G.ControlledPeriod)],
         ["HandSize.Verb"] = [typeof(G.HaveVerb)],
         ["HasCountersCondition.Tense"] = [typeof(Possession)],
         ["ObjectIs.Tense"] = [typeof(G.Assertion)],
@@ -131,7 +134,7 @@ public static class Vocabularies
         ["AdditionalPhase.Phase"] = [typeof(G.Phase)],
         ["AdditionalPhase.Anchor"] = [typeof(G.PhaseAnchor)],
         ["AdditionalPhase.Count"] = [typeof(G.AdditionalCount)],
-        ["AmountThisWay.Kind"] = [typeof(G.ThisWayAmount)],
+        ["AmountThisWay.Kind"] = [typeof(G.ThisWayAmount), typeof(ThisWayAmountKind)],
         ["HasDesignation.Designation"] = [typeof(G.PlayerDesignation)],
         ["ChoiceMade.Choice"] = [typeof(G.CastingChoice), typeof(ChoiceWord)],
         ["HasKeywordsCondition.Keywords"] = [typeof(G.Keyword)],
@@ -204,7 +207,7 @@ public enum Manner { AtRandom }
 public enum DamageHistory { DealtDamageThisTurn, DealtDamageThisWay }
 
 /// <summary>The game's zones.</summary>
-public enum Zone { Battlefield, Hand, Library, Graveyard, Exile, Stack, Command }
+public enum Zone { Battlefield, Hand, Library, Graveyard, Exile, Stack, Command, OutsideTheGame }
 
 /// <summary>How two amounts compare.</summary>
 public enum Comparison { Equal, Less, LessOrEqual, Greater, GreaterOrEqual }
@@ -243,11 +246,17 @@ public enum ExtremeKind { Greatest, Least }
 public enum SpecialAmount { Those, ThatMuch, TimesKicked }
 
 /// <summary>When an activated ability may be activated.</summary>
-public enum TimingKind { SorcerySpeed, InstantSpeed, OnceEachTurn, Once, During, Before, If, AnyPlayer }
+public enum TimingKind { SorcerySpeed, InstantSpeed, OnceEachTurn, Once, During, Before, If, AnyPlayer, TimesEachTurn }
 
 /// <summary>Events of an object the lowering names beyond the grammar's permanent events: being cast, becoming a target.</summary>
 /// <summary>"PutThere" is a card arriving in the zone it is in now ("cards in your graveyard that were put there this turn").</summary>
-public enum ObjectEventKind { Cast, BecomesTarget, EntersOrTransforms, CountersPut, CountersRemoved, Discarded, PutThere, PutThereFromTheBattlefield }
+public enum ObjectEventKind { Cast, BecomesTarget, EntersOrTransforms, CountersPut, CountersRemoved, Discarded, PutThere, PutThereFromTheBattlefield, BecomesAttached, BecomesUnattached, AttackedOrBlocked, Blocked }
+
+/// <summary>Amounts an earlier effect produced that the grammar names only in text: excess damage.</summary>
+public enum ThisWayAmountKind { ExcessDamage }
+
+/// <summary>Things that happen to a player that the grammar names only in text: being dealt damage.</summary>
+public enum PlayerEventWord { IsDealtDamage }
 
 /// <summary>What something can't be the target of, or can't be done to it: countered, copied, targeted by spells or abilities.</summary>
 public enum TargetingBy { Countered, Copied, SpellsOrAbilities, Spells, Abilities }
@@ -271,4 +280,4 @@ public enum Connective { And, Or, AndOr }
 public enum ChosenCharacteristic { ColorOfYourChoice, BasicLandTypeOfYourChoice, CreatureTypeOfYourChoice, ColorOrColorsOfYourChoice, Name }
 
 /// <summary>Words about a card that are neither type nor color: "nonbasic", "token".</summary>
-public enum CardAspectWord { Nonbasic, Token }
+public enum CardAspectWord { Nonbasic, Token, AllCreatureTypes }

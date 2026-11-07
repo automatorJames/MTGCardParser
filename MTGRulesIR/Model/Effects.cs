@@ -192,8 +192,8 @@ public sealed record Shuffle(Selector Player = null) : Effect;
 /// <summary>An effect with a variable defined after it: "…, where x is the number of cards in your hand".</summary>
 public sealed record LetVariable(Effect Effect, string Name, Quantity Definition) : Effect;
 
-/// <summary>Paying a cost as an effect: "you may pay {g}", "unless you pay {u}".</summary>
-public sealed record PayCost(Cost Cost, Selector Player = null, Quantity PerEach = null, IrNode Plus = null) : Effect;
+/// <summary>Paying a cost as an effect: "you may pay {g}", "unless you pay {u}"; <paramref name="Times"/> when it may be paid repeatedly ("pay {1}{g} any number of times").</summary>
+public sealed record PayCost(Cost Cost, Selector Player = null, Quantity PerEach = null, IrNode Plus = null, Quantity Times = null) : Effect;
 
 /// <summary>An effect that happens unless a payment is made.</summary>
 public sealed record UnlessPaid(Effect Effect, PayCost Payment) : Effect;
@@ -289,8 +289,8 @@ public sealed record CantBeRegenerated(Selector Objects, Duration Duration = nul
 /// <summary>Revealing cards from the top of a library until one of some kind turns up.</summary>
 public sealed record RevealUntil(Selector Player, string Verb, ZoneRef Library, Event Until) : Effect;
 
-/// <summary>A standing permission to play cards from somewhere other than the hand.</summary>
-public sealed record MayPlayFrom(Selector Player, IReadOnlyList<Playable> Plays, ZoneRef From, bool Free = false, IrNode Using = null, Duration Duration = null) : Effect;
+/// <summary>A standing permission to play cards from somewhere other than the hand, or from among particular cards ("from among those cards").</summary>
+public sealed record MayPlayFrom(Selector Player, IReadOnlyList<Playable> Plays, ZoneRef From, bool Free = false, Cost Using = null, Duration Duration = null, Selector Among = null) : Effect;
 
 /// <summary>The alternative to a preceding condition or choice: "otherwise, …".</summary>
 public sealed record Otherwise(Effect Effect) : Effect;
@@ -376,5 +376,29 @@ public sealed record AssignsDamageAsThoughUnblocked(Selector Objects, Duration D
 /// <summary>Something players can't do: "players can't search libraries", "you can't get poison counters".</summary>
 public sealed record PlayerCant(Selector Player, string Action, Duration Duration = null) : Effect;
 
-/// <summary>Triggered abilities of some permanents triggering an additional time when a kind of event causes them to (Panharmonicon).</summary>
+/// <summary>Triggered abilities of some permanents triggering an additional time when a kind of event causes them to (Panharmonicon), or whenever they trigger (no cause).</summary>
 public sealed record AdditionalTriggers(Selector Cause, string Event, Selector Source) : Effect;
+
+/// <summary>It becoming day or night: "it becomes night".</summary>
+public sealed record SetDayNight(string State) : Effect;
+
+/// <summary>Damage that would take a life total below a floor leaves it at an amount instead (Platinum Angel's cousins).</summary>
+public sealed record LifeTotalFloor(Selector Player, Quantity Floor, Quantity ReducedTo) : Effect;
+
+/// <summary>"End the turn."</summary>
+public sealed record EndTheTurn : Effect;
+
+/// <summary>Playing with a hand revealed; the engine keeps no secrets, so this changes nothing.</summary>
+public sealed record PlayWithHandRevealed(Selector Player) : Effect;
+
+/// <summary>Events of some objects not causing abilities to trigger: "creatures entering don't cause abilities to trigger".</summary>
+public sealed record EventsDontTrigger(Selector Objects, IReadOnlyList<string> Events) : Effect;
+
+/// <summary>Exerting a permanent: it won't untap during its controller's next untap step.</summary>
+public sealed record Exert(Selector Objects) : Effect;
+
+/// <summary>Controlling another player for a period: "you control target player during that player's next turn".</summary>
+public sealed record ControlPlayer(Selector Player, string Period) : Effect;
+
+/// <summary>Abilities that may be activated any time one could cast an instant, perhaps on any player's turn.</summary>
+public sealed record ActivateAnyTime(Selector Abilities, bool AnyPlayersTurn = false, Duration Duration = null) : Effect;

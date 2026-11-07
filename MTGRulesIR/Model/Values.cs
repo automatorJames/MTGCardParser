@@ -52,6 +52,9 @@ public sealed record While(Condition Condition) : Duration;
 /// <summary>Until the card leaves the battlefield.</summary>
 public sealed record UntilThisLeaves : Duration;
 
+/// <summary>Until an event happens: "until this card is cast from exile".</summary>
+public sealed record UntilEvent(Event Event) : Duration;
+
 /// <summary>A step or phase, and whose: "your upkeep", "each player's upkeep", "end of turn", "your next end step".</summary>
 public sealed record PhaseRef(string Phase, string Part = null, Selector Whose = null, bool Next = false) : IrNode;
 

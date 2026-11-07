@@ -54,6 +54,17 @@ public sealed class CorpusLowering
         static Effect Then(Effect first, Effect then) =>
             first is Sequence sequence ? new Sequence([.. sequence.Steps, then]) : new Sequence([first, then]);
 
+        // "{x}, {t}: draw a card. x is the number of cards in an opponent's hand.": the definition scopes the ability before it.
+        if (next is LetVariable { Effect: null } definition)
+            return ability switch
+            {
+                TriggeredAbility triggered => triggered with { Effect = new LetVariable(triggered.Effect, definition.Name, definition.Definition) },
+                ActivatedAbility activated => activated with { Effect = new LetVariable(activated.Effect, definition.Name, definition.Definition) },
+                LoyaltyAbility loyalty => loyalty with { Effect = new LetVariable(loyalty.Effect, definition.Name, definition.Definition) },
+                SpellAbility spell => spell with { Effect = new LetVariable(spell.Effect, definition.Name, definition.Definition) },
+                _ => null,
+            };
+
         return ability switch
         {
             TriggeredAbility triggered => triggered with { Effect = Then(triggered.Effect, next) },

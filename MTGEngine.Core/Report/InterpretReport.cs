@@ -107,7 +107,7 @@ public static class InterpreterSupport
         typeof(CopySpell), typeof(DistributeCounters), typeof(MoveCounters), typeof(AssignsNoCombatDamage), typeof(ExchangeControl), typeof(Phasing), typeof(MustBlock), typeof(MustBeBlocked), typeof(DoubleCounters), typeof(DoubleStats), typeof(SwitchStats), typeof(ChangeTargets), typeof(CantBeActivated), typeof(CanBlock), typeof(CreateEmblem),
         typeof(FlipCoin), typeof(RollDice), typeof(CastAsThoughFlash), typeof(MustBlock), typeof(MayNotUntap), typeof(Skip), typeof(TurnFace),
         typeof(GainClassLevel), typeof(BecomeCopy), typeof(MayPlayFrom), typeof(ManaRestriction), typeof(ExtraLandPlays),
-        typeof(AssignsDamageByToughness), typeof(MaximumHandSize), typeof(NoMaximumHandSize), typeof(GainAbilitiesOf), typeof(ProtectionDoesntRemoveThis), typeof(AssignsDamageAsThoughUnblocked),
+        typeof(AssignsDamageByToughness), typeof(MaximumHandSize), typeof(NoMaximumHandSize), typeof(GainAbilitiesOf), typeof(ProtectionDoesntRemoveThis), typeof(AssignsDamageAsThoughUnblocked), typeof(PlayWithHandRevealed),
     ];
 
     static readonly HashSet<Type> _selectors =
@@ -363,6 +363,11 @@ public static class InterpreterSupport
             Remains remains when remains.State is not ("Tapped" or "Untapped" or "OnTheBattlefield" or "Exiled") => $"Remains.{remains.State}",
             GameOutcome { Result: not ("Win" or "Lose") } outcome => $"GameOutcome.{outcome.Result}",
             AmountOfManaSpent { Kind: { } spentKind } when Colors.OfName(spentKind) is null => $"AmountOfManaSpent.{spentKind}",
+            AmountThisWay { Kind: "ExcessDamage" } => "AmountThisWay.ExcessDamage",
+            PayCost { Times: not null } => "PayCost.Times",
+            AlternativeCost { Spells: not null } => "AlternativeCost.Spells",
+            // "{x}, {t}: draw a card. x is …": the engine still lets the player choose X.
+            ActivatedAbility { Effect: LetVariable } defined when defined.Costs.Any(c => c is PayMana mana && mana.Symbols.Any(s => s.Equals("{x}", StringComparison.OrdinalIgnoreCase))) => "ActivatedAbility.DefinedX",
             AmountOfManaSpent { From: not null } => "AmountOfManaSpent.From",
             AssignsDamageAsThoughUnblocked { Duration: { } duration } when !Keeps(duration) => $"AssignsDamageAsThoughUnblocked.Duration[{Describe(duration)}]",
             WasCast { During: { } castDuring } when !Conditions.CastDuringSupported(castDuring) => $"WasCast.During.{castDuring.Phase}",
@@ -484,6 +489,7 @@ public static class InterpreterSupport
             ExtraLandPlays { EachTurn: true, Duration: null, Count: Fixed or Special { Kind: "AnyNumber" } } => true,
             AssignsDamageByToughness { Duration: null } => true,
             AssignsDamageAsThoughUnblocked { Duration: null } => true,
+            PlayWithHandRevealed => true,
             MaximumHandSize { RestOfGame: false } => true,
             NoMaximumHandSize { Duration: null } => true,
             GainAbilitiesOf { Duration: null, Category: "Activated" } => true,

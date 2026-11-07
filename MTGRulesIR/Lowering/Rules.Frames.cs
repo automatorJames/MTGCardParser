@@ -87,9 +87,14 @@ public sealed partial class Lowerer
 
         // "if X would happen, Y" is a replacement effect; any other condition is a conditional one.
         Rule<G.ConditionalEffect>((g, ctx) =>
-            Lower(g.Condition, ctx) is WouldHappen would
-                ? new Replacement(would, LowerAs<Effect>(g.Effect, ctx))
-                : new Conditional(LowerAs<Condition>(g.Condition, ctx), LowerAs<Effect>(g.Effect, ctx)));
+            Lower(g.Condition, ctx) switch
+            {
+                WouldHappen would => new Replacement(would, LowerAs<Effect>(g.Effect, ctx)),
+                // "If this creature would die, put it on top of its owner's library instead": a zone replacement, its "instead" implied.
+                ObjectEvent dying when dying.Events.All(x => x == "Dies" || x.StartsWith("IsPutIntoAGraveyard", StringComparison.Ordinal)) =>
+                    new Replacement(dying, LowerAs<Effect>(g.Effect, ctx) is Instead instead ? instead.Effect : LowerAs<Effect>(g.Effect, ctx)),
+                _ => new Conditional(LowerAs<Condition>(g.Condition, ctx), LowerAs<Effect>(g.Effect, ctx)),
+            });
 
         Rule<G.WhileConditionStatic>((g, ctx) =>
             new StaticAbility(LowerAs<Effect>(g.Effect, ctx), LowerAs<Condition>(g.Condition, ctx)));

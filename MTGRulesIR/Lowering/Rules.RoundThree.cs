@@ -19,9 +19,13 @@ public sealed partial class Lowerer
                     ? new ObjectIs(LowerAs<Selector>(g.Subject, ctx), aspects, g.Assertion is G.Assertion.Isnt or G.Assertion.Wasnt, g.Assertion is G.Assertion.Was or G.Assertion.Wasnt ? "Was" : "Is")
                     : (Condition)Opaque(typeof(Condition), ctx.TextOf(g.Aspect), nameof(G.AsLongAs))));
         Rule<G.AlternativeCost>((g, ctx) =>
-            Lower(g.Replaced, ctx) is Term replaced
-                ? new AlternativeCost(LowerAs<Cost>(g.Cost, ctx), replaced.Value, g.AdditionalCost is null ? null : CostOf(Lower(g.AdditionalCost, ctx), g.AdditionalCost, ctx), g.Provided is null ? null : LowerAs<Condition>(g.Provided, ctx))
-                : Opaque(typeof(Ability), ctx.TextOf(g), nameof(G.AlternativeCost)));
+            Lower(g.Replaced, ctx) switch
+            {
+                Term replaced => new AlternativeCost(LowerAs<Cost>(g.Cost, ctx), replaced.Value, g.AdditionalCost is null ? null : CostOf(Lower(g.AdditionalCost, ctx), g.AdditionalCost, ctx), g.Provided is null ? null : LowerAs<Condition>(g.Provided, ctx)),
+                // "Rather than pay the mana cost for spells you cast", "rather than pay cycling costs": a cost replaced on other spells or abilities.
+                AlternativeCost forOthers => forOthers with { Cost = LowerAs<Cost>(g.Cost, ctx), Additional = g.AdditionalCost is null ? null : CostOf(Lower(g.AdditionalCost, ctx), g.AdditionalCost, ctx), If = g.Provided is null ? null : LowerAs<Condition>(g.Provided, ctx) },
+                _ => Opaque(typeof(Ability), ctx.TextOf(g), nameof(G.AlternativeCost)),
+            });
         Rule<G.BecomesTargetTrigger>((g, ctx) =>
             new TriggeredAbility(
                 new ObjectEvent(LowerAs<Selector>(g.Subject, ctx), ["BecomesTarget"], Only: g.FirstTime ? "FirstTimeEachTurn" : null, By: Lower(g.Source, ctx) is Term source ? source.Value : null, ByController: Lower(g.Controller, ctx) as Controlled),
@@ -38,7 +42,11 @@ public sealed partial class Lowerer
             ctx.Subject = subject;
             try
             {
-                return new WouldHappen(subject, LowerAs<Effect>(g.Predicate, ctx));
+                // "Would die", "would be put into a graveyard": an event of the subject's rather than an effect.
+                var what = Lower(g.Predicate, ctx);
+                if (what is ObjectEvent { Subject: null } happening)
+                    return happening with { Subject = subject };
+                return new WouldHappen(subject, Coerce<Effect>(what, g.Predicate, ctx));
             }
             finally
             {
@@ -120,9 +128,17 @@ public sealed partial class Lowerer
         Rule<G.RevealUntil>((g, ctx) => new RevealUntil(Actor(ctx), g.Verb.ToString(), ZoneOf(g.Library, ctx), LowerAs<Event>(g.StopCondition, ctx)));
         Rule<G.LookAndRearrange>((g, ctx) => Seq(new LookAt(Actor(ctx), LowerAs<Selector>(g.What, ctx)), LowerAs<Effect>(g.Rearrangement, ctx)));
         Rule<G.PlayFromZone>((g, ctx) =>
-            LowerAll(g.Plays, ctx).Select(x => x as Playable).ToList() is var plays && plays.All(x => x is not null) && ZoneOf(g.Source, ctx) is { } from
-                ? new MayPlayFrom(Actor(ctx), plays, from, g.Free, g.Using is null ? null : Lower(g.Using, ctx), DurationOf(Lower(g.Duration, ctx)))
-                : Opaque(typeof(Effect), ctx.TextOf(g), nameof(G.PlayFromZone)));
+        {
+            var plays = LowerAll(g.Plays, ctx).Select(x => x as Playable).ToList();
+            if (plays.Any(x => x is null))
+                return Opaque(typeof(Effect), ctx.TextOf(g), nameof(G.PlayFromZone));
+            // "From among those cards": the cards themselves, wherever they are (exiled, usually).
+            if (g.Source.GetResolvedValue() is G.AmongThem among)
+                return new MayPlayFrom(Actor(ctx), plays, null, g.Free, g.Using is null ? null : LowerAs<Cost>(g.Using, ctx), DurationOf(Lower(g.Duration, ctx)), Among: LowerAs<Selector>(among.Cards, ctx));
+            return ZoneOf(g.Source, ctx) is { } from
+                ? new MayPlayFrom(Actor(ctx), plays, from, g.Free, g.Using is null ? null : LowerAs<Cost>(g.Using, ctx), DurationOf(Lower(g.Duration, ctx)))
+                : Opaque(typeof(Effect), ctx.TextOf(g), nameof(G.PlayFromZone));
+        });
         Rule<G.PowerToughnessEqual>((g, ctx) => new SetStats(LowerAs<Selector>(g.Object, ctx), g.PowerAndOrToughness.ToString(), LowerAs<Quantity>(g.Amount, ctx)));
         Rule<G.SearchFor>((g, ctx) =>
             LowerAs<Selector>(g.Owner, ctx) is var owner

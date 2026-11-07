@@ -52,8 +52,8 @@ public sealed record EnchantAbility(Selector Target) : Ability;
 /// <summary>Limits on when the card's ability may be activated: "activate only as a sorcery", "activate only once each turn".</summary>
 public sealed record ActivationLimits(IReadOnlyList<Timing> Timings, bool ForCasting = false) : Ability;
 
-/// <summary>One activation limit: its kind ("SorcerySpeed", "OnceEachTurn", "During", "If", …) and the phase or condition it names.</summary>
-public sealed record Timing(string Kind, PhaseRef Phase = null, Condition If = null, string Keyword = null) : IrNode;
+/// <summary>One activation limit: its kind ("SorcerySpeed", "OnceEachTurn", "During", "If", "TimesEachTurn", …) and the phase, condition or count it names.</summary>
+public sealed record Timing(string Kind, PhaseRef Phase = null, Condition If = null, string Keyword = null, Quantity Times = null) : IrNode;
 
 /// <summary>An ability under an ability word ("landfall —", "threshold —"); the word only labels it.</summary>
 public sealed record LabeledAbility(string Word, Ability Ability) : Ability;
@@ -67,8 +67,8 @@ public sealed record ReplacementAbility(Effect Effect) : Ability;
 /// <summary>A cost paid as well as casting: "as an additional cost to cast this spell, sacrifice a creature".</summary>
 public sealed record AdditionalCost(Selector Spells, Cost Cost) : Ability;
 
-/// <summary>A cost that may be paid rather than the usual one: "you may pay {1}{w} rather than pay this spell's mana cost".</summary>
-public sealed record AlternativeCost(Cost Cost, string Replaces, Cost Additional = null, Condition If = null) : Ability;
+/// <summary>A cost that may be paid rather than the usual one: "you may pay {1}{w} rather than pay this spell's mana cost"; for other spells when <paramref name="Spells"/> is given ("rather than pay the mana cost for spells you cast").</summary>
+public sealed record AlternativeCost(Cost Cost, string Replaces, Cost Additional = null, Condition If = null, Selector Spells = null) : Ability;
 
 /// <summary>Keywords of which one is chosen: "your choice of flying, trample, or haste".</summary>
 public sealed record KeywordChoice(IReadOnlyList<KeywordInstance> Options) : IrNode;

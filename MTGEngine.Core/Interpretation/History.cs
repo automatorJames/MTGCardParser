@@ -29,7 +29,7 @@ public static class History
     public static readonly ImmutableHashSet<string> ObjectEvents =
     [
         "Died", "Entered", "EntersTheBattlefield", "EnteredUnderYourControl", "Attacked", "DidntAttack", "WasDealtDamage", "DealtDamage", "DealtDamageToYou",
-        "PutThere", "PutThereFromTheBattlefield",
+        "PutThere", "PutThereFromTheBattlefield", "Blocked", "AttackedOrBlocked",
     ];
 
     /// <summary>Whether <see cref="Evaluate"/> can answer this condition.</summary>
@@ -37,7 +37,7 @@ public static class History
 
     public static bool Supported(Happened happened) =>
         happened is { Span: "ThisWay", Event: PlayerAction { Action: var thisWay } } && ThisWayActions.Contains(thisWay) ||
-        happened.Span is "ThisTurn" or "LastTurn" or null && happened.Event switch
+        happened.Span is "ThisTurn" or "LastTurn" or "ThisCombat" or null && happened.Event switch
         {
             NamedEvent named => NamedEvents.Contains(named.Kind),
             PlayerAction action => PlayerActions.Contains(action.Action) && !action.FromHand,
@@ -131,6 +131,8 @@ public static class History
                     "PutThere" => events.OfType<ZoneMoved>().Count(x => state.Object(x.Object) is { } arrived && x.To == arrived.Zone && about(x.Object, arrived.Zone)),
                     "PutThereFromTheBattlefield" => events.OfType<ZoneMoved>().Count(x => x.From == Zone.Battlefield && state.Object(x.Object) is { } arrived && x.To == arrived.Zone && about(x.Object, arrived.Zone)),
                     "Attacked" => events.OfType<AttackersDeclared>().Sum(x => x.Attackers.Count(id => about(id, Zone.Battlefield))),
+                    "Blocked" => events.OfType<BlockersDeclared>().Sum(x => x.Blocks.Keys.Count(id => about(id, Zone.Battlefield))),
+                    "AttackedOrBlocked" => events.OfType<AttackersDeclared>().Sum(x => x.Attackers.Count(id => about(id, Zone.Battlefield))) + events.OfType<BlockersDeclared>().Sum(x => x.Blocks.Keys.Count(id => about(id, Zone.Battlefield))),
                     "DidntAttack" => events.OfType<AttackersDeclared>().Any(x => x.Attackers.Any(id => about(id, Zone.Battlefield))) ? 0 : 1,
                     "WasDealtDamage" => events.OfType<DamageDealt>().Count(x => x.Target.IsObject && about(x.Target.Object.Value, Zone.Battlefield)),
                     "DealtDamage" => events.OfType<DamageDealt>().Count(x => x.Source is { } dealer && about(dealer, Zone.Battlefield)),

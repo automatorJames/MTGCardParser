@@ -32,6 +32,7 @@ public sealed partial class Lowerer
         RegisterRoundEleven();
         RegisterRoundTwelve();
         RegisterRoundThirteen();
+        RegisterRoundFourteen();
     }
 
     /// <summary>The glyph (and vocabulary) types that have a lowering rule.</summary>
@@ -173,6 +174,8 @@ public sealed partial class Lowerer
             Scaled { Base: LifeTotal } scaled when typeof(T) == typeof(Cost) => (T)(IrNode)new PayLife(scaled),
             Effect effect when typeof(T) == typeof(Cost) => (T)(IrNode)new ActionCost(effect),
             KeywordInstance keyword when typeof(T) == typeof(Cost) => (T)(IrNode)new KeywordCost(keyword),
+            // "Pay {e}{e}" as a step of an effect: paying the cost.
+            Cost cost when typeof(T) == typeof(Effect) => (T)(IrNode)new PayCost(cost),
             BuffGroup group when typeof(T) == typeof(Effect) => (T)(IrNode)PumpOf(group, null, null, ctx),
             ObjectEvent happening when typeof(T) == typeof(Condition) => (T)(IrNode)new Happened(happening, null),
             Happened { Event: ObjectEvent inner } happened when typeof(T) == typeof(Event) => (T)(IrNode)(inner with { Only = inner.Only ?? happened.Span }),
@@ -270,6 +273,10 @@ public sealed partial class Lowerer
             AssignsDamageAsThoughUnblocked { Duration: null } => true,
             PlayerCant { Duration: null } => true,
             AdditionalTriggers => true,
+            PlayWithHandRevealed => true,
+            EventsDontTrigger => true,
+            LifeTotalFloor => true,
+            ActivateAnyTime { Duration: null } => true,
             // "Untap all creatures you control during each other player's untap step": a standing rule, read at that step.
             Untap { During: DuringPhase } => true,
             Sequence sequence => sequence.Steps.All(IsContinuous),
