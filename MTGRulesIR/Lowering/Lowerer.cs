@@ -30,6 +30,7 @@ public sealed partial class Lowerer
         RegisterRoundNine();
         RegisterRoundTen();
         RegisterRoundEleven();
+        RegisterRoundTwelve();
     }
 
     /// <summary>The glyph (and vocabulary) types that have a lowering rule.</summary>
@@ -261,6 +262,12 @@ public sealed partial class Lowerer
             SetStats => true,
             MayPlayFrom { Duration: null } => true,
             ManaRestriction => true,
+            AssignsDamageByToughness { Duration: null } => true,
+            MaximumHandSize => true,
+            GainAbilitiesOf { Duration: null } => true,
+            ProtectionDoesntRemoveThis => true,
+            // "Untap all creatures you control during each other player's untap step": a standing rule, read at that step.
+            Untap { During: DuringPhase } => true,
             Sequence sequence => sequence.Steps.All(IsContinuous),
             _ => false,
         };

@@ -62,7 +62,7 @@ public static class Vocabularies
         ["ManaRestriction.Rule"] = [typeof(G.ManaSpendingRule)],
         ["OfChosen.Characteristic"] = [typeof(G.ChosenAspect), typeof(ChosenCharacteristic)],
         ["SearchLibrary.Zones"] = [typeof(G.SearchedZones)],
-        ["Controlled.Relation"] = [typeof(G.ControlRelation), typeof(Possession)],
+        ["Controlled.Relation"] = [typeof(G.ControlRelation), typeof(Possession), typeof(UseVerb)],
         ["Controls.Connective"] = [typeof(G.ConditionConnective)],
         ["Controls.Tense"] = [typeof(G.ControlTense)],
         ["DistinctCount.Aspect"] = [typeof(G.CountedAspect)],
@@ -139,6 +139,11 @@ public static class Vocabularies
         ["HasExtreme.Which"] = [typeof(G.Superlative)],
         ["CharacteristicCompared.Characteristic"] = [typeof(G.Characteristic)],
         ["CharacteristicCompared.OtherCharacteristic"] = [typeof(G.Characteristic)],
+        ["RelativeCharacteristic.Characteristic"] = [typeof(G.Characteristic)],
+        ["DamagePortion.Kind"] = [typeof(G.DamageKind)],
+        ["GainAbilitiesOf.Category"] = [typeof(AbilityCategory)],
+        ["AmountOfManaSpent.Kind"] = [typeof(G.SpentManaKind)],
+        ["DayNight.State"] = [typeof(G.DayNightState)],
     };
 
     static readonly System.Text.RegularExpressions.Regex ManaSymbol = new(@"^\{(\d+|[wubrgcsxe]|[wubrg2]/[wubrgp]|[wubrg]/[wubrg]/p)\}$");
@@ -225,13 +230,14 @@ public enum EventSpan { ThisWay, ThisCombat, LastTurn }
 public enum ExtremeKind { Greatest, Least }
 
 /// <summary>Amounts named rather than counted, beyond the grammar's quantity words: "those" cards named earlier.</summary>
-public enum SpecialAmount { Those, ThatMuch }
+public enum SpecialAmount { Those, ThatMuch, TimesKicked }
 
 /// <summary>When an activated ability may be activated.</summary>
 public enum TimingKind { SorcerySpeed, InstantSpeed, OnceEachTurn, Once, During, Before, If, AnyPlayer }
 
 /// <summary>Events of an object the lowering names beyond the grammar's permanent events: being cast, becoming a target.</summary>
-public enum ObjectEventKind { Cast, BecomesTarget, EntersOrTransforms, CountersPut, CountersRemoved, Discarded }
+/// <summary>"PutThere" is a card arriving in the zone it is in now ("cards in your graveyard that were put there this turn").</summary>
+public enum ObjectEventKind { Cast, BecomesTarget, EntersOrTransforms, CountersPut, CountersRemoved, Discarded, PutThere, PutThereFromTheBattlefield }
 
 /// <summary>What something can't be the target of, or can't be done to it: countered, copied, targeted by spells or abilities.</summary>
 public enum TargetingBy { Countered, Copied, SpellsOrAbilities, Spells, Abilities }

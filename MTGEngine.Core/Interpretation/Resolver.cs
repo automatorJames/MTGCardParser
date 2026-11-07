@@ -186,7 +186,13 @@ public static class Resolver
         if (filter.Qualifiers?.Any(q => q.Vocabulary == "DamageHistory" && q.Quality == "DealtDamageThisWay") == true)
             return (ctx.Last ?? []).Where(x => x.IsObject).Select(x => x.Object.Value).ToImmutableList();
         if (filter.Qualifiers?.Any(q => q.Vocabulary == "AffectedThisWay") == true)
-            return (ctx.Affected ?? ctx.Last ?? []).Where(x => x.IsObject).Select(x => x.Object.Value).ToImmutableList();
+        {
+            var affected = (ctx.Affected ?? ctx.Last ?? []).Where(x => x.IsObject).Select(x => x.Object.Value);
+            // "All other cards revealed this way": the revealed cards except what the step before took from among them.
+            if (filter.Qualifiers.Any(q => q is { Vocabulary: "Distinction", Quality: nameof(Distinction.Other) }) && ctx.Affected is not null && ctx.Last is not null && !ReferenceEquals(ctx.Affected, ctx.Last))
+                affected = affected.Except(ctx.Last.Where(x => x.IsObject).Select(x => x.Object.Value));
+            return affected.ToImmutableList();
+        }
         if (filter.With?.OfType<Related>().FirstOrDefault(x => x.Relation == Relation.Among) is { } among)
         {
             var named = Objects(among.To, ctx);

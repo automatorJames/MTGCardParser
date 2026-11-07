@@ -158,6 +158,12 @@ public static class Quantities
             }
             case Special { Kind: "All" }:
                 return int.MaxValue;
+            // "The amount of mana spent to cast this spell".
+            case AmountOfManaSpent { Kind: null } spentOn:
+            {
+                var paid = Resolver.Objects(spentOn.For ?? new Self(), ctx).Select(ctx.State.Object).Where(x => x?.SpentToCast is not null).ToList();
+                return paid.Count == 0 ? null : paid[0].SpentToCast.Total;
+            }
             case Bound bound:
                 return Evaluate(bound.Value, ctx);
             case Extreme extreme:
@@ -238,12 +244,25 @@ public static class Conditions
             }
             case Not not:
                 return !Evaluate(not.Condition, ctx);
+            case Or either:
+            {
+                bool? result = false;
+                foreach (var part in either.Conditions)
+                {
+                    var value = Evaluate(part, ctx);
+                    if (value == true)
+                        return true;
+                    if (value is null)
+                        result = null;
+                }
+                return result;
+            }
             case WasCast wasCast:
             {
                 var objects = Resolver.Objects(wasCast.Spell ?? new Self(), ctx).Select(state.Object).Where(x => x is not null).ToList();
                 if (objects.Count == 0)
                     return wasCast.Negated;
-                var holds = objects.Any(x => x.WasCastWith("Cast") && (wasCast.From is not { Zone: var from } || x.WasCastWith("From" + from)));
+                var holds = objects.Any(x => x.WasCastWith("Cast") && (wasCast.From is not { Zone: var from } || x.WasCastWith("From" + from)) && (wasCast.During is not { } during || CastDuringHolds(x, during)));
                 return holds != wasCast.Negated;
             }
             case ManaSpent spent:
@@ -490,6 +509,20 @@ public static class Conditions
                 return null;
         }
     }
+
+    /// <summary>Whether a spell was cast during the phase named: a main phase of its caster's turn, or a turn of someone's (Casting records which).</summary>
+    public static bool CastDuringHolds(GameObject spell, PhaseRef during) =>
+        during.Phase switch
+        {
+            "MainPhase" or "FirstMainPhase" or "SecondMainPhase" or "PrecombatMainPhase" or "PostcombatMainPhase" => spell.WasCastWith("DuringMainPhase"),
+            "Turn" => during.Whose is PlayerSelector { Kind: PlayerKind.You } ? spell.WasCastWith("DuringYourTurn") : spell.WasCastWith("DuringOpponentsTurn"),
+            _ => false,
+        };
+
+    /// <summary>The phases <see cref="CastDuringHolds"/> can judge.</summary>
+    public static bool CastDuringSupported(PhaseRef during) =>
+        during.Phase is "MainPhase" or "FirstMainPhase" or "SecondMainPhase" or "PrecombatMainPhase" or "PostcombatMainPhase"
+        || during.Phase == "Turn" && during.Whose is PlayerSelector { Kind: PlayerKind.You or PlayerKind.AnyOpponent or PlayerKind.EachOpponent or PlayerKind.YourOpponents };
 
     public static Step? StepOf(string phase) =>
         phase switch

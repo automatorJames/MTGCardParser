@@ -29,6 +29,7 @@ public static class History
     public static readonly ImmutableHashSet<string> ObjectEvents =
     [
         "Died", "Entered", "EntersTheBattlefield", "EnteredUnderYourControl", "Attacked", "DidntAttack", "WasDealtDamage", "DealtDamage", "DealtDamageToYou",
+        "PutThere", "PutThereFromTheBattlefield",
     ];
 
     /// <summary>Whether <see cref="Evaluate"/> can answer this condition.</summary>
@@ -126,6 +127,9 @@ public static class History
                     "Entered" or "EntersTheBattlefield" => events.OfType<ZoneMoved>().Count(x => x.To == Zone.Battlefield && about(x.Object, Zone.Battlefield)
                         && (objectEvent.UnderControlOf is null || Resolver.Players(objectEvent.UnderControlOf, ctx).Contains(x.Controller))),
                     "EnteredUnderYourControl" => events.OfType<ZoneMoved>().Count(x => x.To == Zone.Battlefield && x.Controller == you && about(x.Object, Zone.Battlefield)),
+                    // "Cards in your graveyard that were put there (from the battlefield) this turn": arrived in the zone they're in now.
+                    "PutThere" => events.OfType<ZoneMoved>().Count(x => state.Object(x.Object) is { } arrived && x.To == arrived.Zone && about(x.Object, arrived.Zone)),
+                    "PutThereFromTheBattlefield" => events.OfType<ZoneMoved>().Count(x => x.From == Zone.Battlefield && state.Object(x.Object) is { } arrived && x.To == arrived.Zone && about(x.Object, arrived.Zone)),
                     "Attacked" => events.OfType<AttackersDeclared>().Sum(x => x.Attackers.Count(id => about(id, Zone.Battlefield))),
                     "DidntAttack" => events.OfType<AttackersDeclared>().Any(x => x.Attackers.Any(id => about(id, Zone.Battlefield))) ? 0 : 1,
                     "WasDealtDamage" => events.OfType<DamageDealt>().Count(x => x.Target.IsObject && about(x.Target.Object.Value, Zone.Battlefield)),

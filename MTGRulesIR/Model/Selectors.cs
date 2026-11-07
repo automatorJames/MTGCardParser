@@ -136,6 +136,9 @@ public sealed record HasExtreme(string Characteristic, string Which, Selector Am
 /// <summary>Objects whose characteristic compares to another object's: "with power less than this creature's power".</summary>
 public sealed record CharacteristicCompared(string Characteristic, Comparison Comparison, Selector Other, string OtherCharacteristic) : Predicate;
 
+/// <summary>Objects whose characteristic compares to that of the object the clause is about - the ability's source, or what the trigger is about: "with lesser power", "with greater mana value".</summary>
+public sealed record RelativeCharacteristic(string Characteristic, Comparison Comparison) : Predicate;
+
 public enum PlayerKind
 {
     You,

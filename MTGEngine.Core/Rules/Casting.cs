@@ -16,6 +16,10 @@ public sealed partial class Game
         var options = ImmutableHashSet.CreateBuilder<string>();
         if (also is not null)
             options.Add(also);
+        // When it was cast, for "if you cast this spell during your main phase".
+        options.Add(State.ActivePlayer == player ? "DuringYourTurn" : "DuringOpponentsTurn");
+        if (State.ActivePlayer == player && State.Step is Step.Main1 or Step.Main2)
+            options.Add("DuringMainPhase");
         List<Effect> actions = [];
 
         if (alternative == FaceDownCast)

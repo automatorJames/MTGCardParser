@@ -320,6 +320,19 @@ public static class Filters
                 }
                 finally { _comparing--; }
             }
+            // "With lesser power", "with greater mana value": compared with what the clause is about - the trigger's subject, else the ability's source.
+            case RelativeCharacteristic relative:
+            {
+                var anchor = ctx?.TriggerSubject is { IsObject: true } about ? state.Object(about.Object.Value) ?? state.LastKnownOf(about.Object.Value) : source is { } own ? state.Object(own) : null;
+                if (anchor is null || anchor.Id == obj.Id || _comparing > 2)
+                    return false;
+                _comparing++;
+                try
+                {
+                    return Compare(CharacteristicValue(relative.Characteristic, obj, traits), relative.Comparison, CharacteristicValue(relative.Characteristic, anchor, Characteristics.Of(state, anchor)));
+                }
+                finally { _comparing--; }
+            }
             case CharacteristicBound bound:
                 return bound.Value is Fixed fixedValue && bound.Characteristics.All(characteristic => Compare(CharacteristicValue(characteristic, obj, traits), bound.Comparison, fixedValue.Value));
             case Related { Relation: Relation.OtherThan } related:

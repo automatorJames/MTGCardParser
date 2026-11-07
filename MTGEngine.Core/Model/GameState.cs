@@ -89,7 +89,8 @@ public sealed record ExileLink(ObjectId Source, int SourceZoneChanges, ObjectId 
 public sealed record LinkedExile(ObjectId Source, int SourceZoneChanges, ImmutableList<(ObjectId Card, int ZoneChangeCount)> Exiled);
 
 /// <summary>A trigger an effect set up for later: "when that creature dies this turn, …". One-shot; gone after it fires or its turn ends.</summary>
-public sealed record DelayedTrigger(int Id, Event When, Effect Effect, PlayerId Controller, ObjectId? Source, TargetRef? Subject, int? ExpiresAfterTurn);
+/// <summary>A trigger set up by an effect: one that fires once ("at the beginning of the next end step, …"), or one that keeps firing until it expires ("until end of turn, whenever …").</summary>
+public sealed record DelayedTrigger(int Id, Event When, Effect Effect, PlayerId Controller, ObjectId? Source, TargetRef? Subject, int? ExpiresAfterTurn, bool Repeats = false);
 
 /// <summary>Mana in a pool that a restriction limits, with the object whose ability made it (for "spend this mana only to activate abilities of artifacts").</summary>
 public sealed record RestrictedMana(Color? Color, int Amount, ManaRestriction Restriction, ObjectId Source, PlayerId Controller);

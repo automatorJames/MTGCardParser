@@ -107,6 +107,7 @@ public static class InterpreterSupport
         typeof(CopySpell), typeof(DistributeCounters), typeof(MoveCounters), typeof(AssignsNoCombatDamage), typeof(ExchangeControl), typeof(Phasing), typeof(MustBlock), typeof(MustBeBlocked), typeof(DoubleCounters), typeof(DoubleStats), typeof(SwitchStats), typeof(ChangeTargets), typeof(CantBeActivated), typeof(CanBlock), typeof(CreateEmblem),
         typeof(FlipCoin), typeof(RollDice), typeof(CastAsThoughFlash), typeof(MustBlock), typeof(MayNotUntap), typeof(Skip), typeof(TurnFace),
         typeof(GainClassLevel), typeof(BecomeCopy), typeof(MayPlayFrom), typeof(ManaRestriction), typeof(ExtraLandPlays),
+        typeof(AssignsDamageByToughness), typeof(MaximumHandSize), typeof(NoMaximumHandSize), typeof(GainAbilitiesOf), typeof(ProtectionDoesntRemoveThis),
     ];
 
     static readonly HashSet<Type> _selectors =
@@ -117,14 +118,14 @@ public static class InterpreterSupport
     static readonly HashSet<Type> _quantities =
     [
         typeof(Fixed), typeof(Variable), typeof(CountOf), typeof(TotalOf), typeof(LifeTotal), typeof(DamageOrLifeTotal), typeof(Negated), typeof(Product), typeof(Arithmetic),
-        typeof(Adjusted), typeof(Scaled), typeof(CharacteristicOf), typeof(Special), typeof(Bound), typeof(Extreme), typeof(DistinctCount), typeof(Devotion), typeof(AmountThisWay),
+        typeof(Adjusted), typeof(Scaled), typeof(CharacteristicOf), typeof(Special), typeof(Bound), typeof(Extreme), typeof(DistinctCount), typeof(Devotion), typeof(AmountThisWay), typeof(AmountOfManaSpent),
     ];
 
     static readonly HashSet<Type> _conditions =
     [
         typeof(And), typeof(Not), typeof(Controls), typeof(CountCondition), typeof(CompareCount), typeof(ThereAre), typeof(IsKind), typeof(ObjectIs), typeof(AbilityResolvedNthTime),
         typeof(HasKeywordsCondition), typeof(HasCountersCondition), typeof(IsInZone), typeof(ItsPhase), typeof(Did), typeof(OutcomeCondition), typeof(Happened),
-        typeof(WasCastWith), typeof(Targets), typeof(HandSize), typeof(WasAffectedThisWay), typeof(WasCast), typeof(ManaSpent), typeof(CompareControl),
+        typeof(WasCastWith), typeof(Targets), typeof(HandSize), typeof(WasAffectedThisWay), typeof(WasCast), typeof(ManaSpent), typeof(CompareControl), typeof(Or),
     ];
 
     static readonly HashSet<Type> _events =
@@ -140,7 +141,7 @@ public static class InterpreterSupport
     static readonly HashSet<Type> _predicates =
     [
         typeof(HasKeywords), typeof(HasStats), typeof(CharacteristicBound), typeof(CharacteristicCompared), typeof(HasExtreme), typeof(Distinct), typeof(Related), typeof(ActedOn), typeof(CastFrom), typeof(QualifierChoice), typeof(QualifiedKind),
-        typeof(CastBy), typeof(WithCounters), typeof(Satisfying), typeof(ChosenBy), typeof(OfChosen), typeof(Targeting), typeof(SharesCharacteristic), typeof(Named), typeof(InCombatWith),
+        typeof(CastBy), typeof(WithCounters), typeof(Satisfying), typeof(ChosenBy), typeof(OfChosen), typeof(Targeting), typeof(SharesCharacteristic), typeof(Named), typeof(InCombatWith), typeof(RelativeCharacteristic),
     ];
 
     static readonly HashSet<Type> _durations =
@@ -293,7 +294,7 @@ public static class InterpreterSupport
                 return name;
             case Duration when !_durations.Contains(type):
                 return name;
-            case Token when type != typeof(TokenSpec) && type != typeof(TokenCopy):
+            case Token when type != typeof(TokenSpec) && type != typeof(TokenCopy) && type != typeof(ThoseTokens):
                 return name;
             case ManaOption when type != typeof(ManaAmount) && type != typeof(ManaChoice):
                 return name;
@@ -361,6 +362,15 @@ public static class InterpreterSupport
             CanAsThough asThough when Characteristics.AsThough(asThough) is null => $"CanAsThough.{asThough.Action}.{asThough.Keyword}",
             Remains remains when remains.State is not ("Tapped" or "Untapped" or "OnTheBattlefield" or "Exiled") => $"Remains.{remains.State}",
             GameOutcome { Result: not ("Win" or "Lose") } outcome => $"GameOutcome.{outcome.Result}",
+            AmountOfManaSpent { Kind: not null } spentOf => $"AmountOfManaSpent.{spentOf.Kind}",
+            WasCast { During: { } castDuring } when !Conditions.CastDuringSupported(castDuring) => $"WasCast.During.{castDuring.Phase}",
+            // A second mode count under a condition ("choose both instead") isn't read by the modal rules yet.
+            Instead { Effect: ChooseModes } => "ChooseModes.Instead",
+            AssignsDamageByToughness { Duration: { } duration } when !Keeps(duration) => $"AssignsDamageByToughness.Duration[{Describe(duration)}]",
+            GainAbilitiesOf { Duration: { } duration } when !Keeps(duration) => $"GainAbilitiesOf.Duration[{Describe(duration)}]",
+            GainAbilitiesOf { Category: not "Activated" } gainedOf => $"GainAbilitiesOf.{gainedOf.Category}",
+            NoMaximumHandSize { Duration: not null } => "NoMaximumHandSize.Duration",
+            MaximumHandSize { RestOfGame: true } => "MaximumHandSize.RestOfGame",
             TriggeredAbility { If: { } condition } when Problem(condition) is { } problem => problem,
             KeywordAction action when action.Actions.Any(x => !KeywordActions.Supported.Contains(x.Keyword)) => $"KeywordAction.{action.Actions.First(x => !KeywordActions.Supported.Contains(x.Keyword)).Keyword}",
             KeywordAction { Other: { Count: > 0 } } => "KeywordAction.Other",
@@ -470,6 +480,13 @@ public static class InterpreterSupport
             ManaRestriction => true,
             GainControl { Duration: null } => true,
             ExtraLandPlays { EachTurn: true, Duration: null, Count: Fixed or Special { Kind: "AnyNumber" } } => true,
+            AssignsDamageByToughness { Duration: null } => true,
+            MaximumHandSize { RestOfGame: false } => true,
+            NoMaximumHandSize { Duration: null } => true,
+            GainAbilitiesOf { Duration: null, Category: "Activated" } => true,
+            ProtectionDoesntRemoveThis => true,
+            // Read at the untap step (Game): "untap all creatures you control during each other player's untap step".
+            Untap { During: DuringPhase { Phase.Phase: "UntapStep" or "Untap" } } => true,
             Sequence sequence => sequence.Steps.All(x => IsStaticHandled(Characteristics.WithoutPhase(x))),
             _ => false,
         };

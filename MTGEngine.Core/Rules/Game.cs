@@ -211,6 +211,18 @@ public sealed partial class Game
                         Emit(new Untapped(obj.Id));
                 foreach (var stale in State.Temporary.Where(x => x.DoesntUntap && State.Object(x.Target)?.Controller == active).ToList())
                     Emit(new TemporaryEffectsExpired(State.Turn));
+                // "Untap all creatures you control during each other player's untap step."
+                foreach (var (effect, source) in Characteristics.ActiveStatics(State).Where(x => x.Effect is Untap { During: DuringPhase { Phase.Phase: "UntapStep" or "Untap" } }).ToList())
+                {
+                    var untap = (Untap)effect;
+                    var ctx = EffectContext.Snapshot(State, source.Controller, source.Id);
+                    var whose = ((DuringPhase)untap.During).Phase.Whose;
+                    if (whose is not null && !Resolver.Players(whose, ctx).Contains(active))
+                        continue;
+                    foreach (var id in Resolver.Objects(untap.Objects, ctx))
+                        if (State.Object(id) is { Tapped: true })
+                            Emit(new Untapped(id));
+                }
                 return;
 
             case Step.Draw:
@@ -279,13 +291,42 @@ public sealed partial class Game
         State.Temporary.Any(x => x.Target == obj.Id && x.DoesntUntap && x.ActiveIn(State))
         || Characteristics.StaticEffects(State).Any(x => x.Effect is DoesntUntap && Characteristics.Covers(State, x.Objects, x.Source, obj));
 
+    /// <summary>A player's maximum hand size: seven, as static abilities set it, raise or lower it, or remove it.</summary>
+    int MaxHandSizeFor(PlayerId player)
+    {
+        var size = MaxHandSize;
+        foreach (var (effect, source) in Characteristics.ActiveStatics(State))
+        {
+            if (effect is not (NoMaximumHandSize or MaximumHandSize))
+                continue;
+            var ctx = EffectContext.Snapshot(State, source.Controller, source.Id);
+            switch (effect)
+            {
+                case NoMaximumHandSize { Duration: null } none when Resolver.Players(none.Player, ctx).Contains(player):
+                    return int.MaxValue;
+                case MaximumHandSize { Size: { } set } fixedSize when Resolver.Players(fixedSize.Player, ctx).Contains(player):
+                    size = Quantities.Evaluate(set, ctx) ?? size;
+                    break;
+                case MaximumHandSize { Change: { } change } changed when Resolver.Players(changed.Player, ctx).Contains(player):
+                    size += Quantities.Evaluate(change, ctx) ?? 0;
+                    break;
+            }
+        }
+        return Math.Max(0, size);
+    }
+
+    /// <summary>Whether an aura says the protection it grants doesn't remove it (the Ward cycle).</summary>
+    static bool ProtectionExempt(GameObject aura) =>
+        aura.Card.Abilities.SelectMany(MTGRulesIR.Lowering.NodeWalker.Nodes).OfType<ProtectionDoesntRemoveThis>().Any();
+
     void Cleanup()
     {
         var active = State.ActivePlayer;
         var hand = State.Player(active).Hand;
-        if (hand.Count > MaxHandSize)
+        var limit = MaxHandSizeFor(active);
+        if (hand.Count > limit)
         {
-            var excess = hand.Count - MaxHandSize;
+            var excess = hand.Count - limit;
             var chosen = Decide(new ChooseTargets(active, "Discard down to hand size", hand.Select(TargetRef.Of).ToImmutableList(), excess, excess)).Targets?.Where(x => x.IsObject).Select(x => x.Object.Value).Distinct().Take(excess).ToList();
             if (chosen is null || chosen.Count < excess)
                 chosen = hand.Take(excess).ToList();
@@ -1082,7 +1123,7 @@ public sealed partial class Game
         var ctx = EffectContext.For(this, item, item.Subject);
         foreach (var effect in item.Effects)
             ctx = Interpreter.Execute(effect, ctx);
-        if (item.Kind == StackKind.Triggered && item.DelayedId is { } delayedId)
+        if (item.Kind == StackKind.Triggered && item.DelayedId is { } delayedId && State.DelayedTriggers.FirstOrDefault(x => x.Id == delayedId) is not { Repeats: true })
             Emit(new DelayedTriggerRemoved(delayedId));
 
         if (item.Spell is { } cardId && State.Object(cardId) is { Zone: Zone.Stack } resolved)
@@ -1192,7 +1233,7 @@ public sealed partial class Game
                     continue;
                 }
                 if (obj.Card.IsAura && (obj.AttachedTo is null || State.Object(obj.AttachedTo.Value) is not { Zone: Zone.Battlefield } enchanted
-                    || Keywords.ProtectedFrom(State, enchanted, Characteristics.Of(State, enchanted), obj)))
+                    || Keywords.ProtectedFrom(State, enchanted, Characteristics.Of(State, enchanted), obj) && !ProtectionExempt(obj)))
                 {
                     MoveToZone(obj.Id, Zone.Graveyard);
                     changed = true;
@@ -1256,7 +1297,7 @@ public sealed partial class Game
                 var targetCounts = _lastTargetCounts;
                 var item = new StackItem(State.NextStackId, controller, trigger.Source.Zone == Zone.Command ? null : trigger.Source.Id, StackKind.Triggered, [effect], targets, 0,
                     Description: $"{trigger.Source.Card.Name} trigger", Subject: trigger.Subject, Bindings: bindings, DelayedId: trigger.Delayed?.Id, AbilityIndex: trigger.AbilityIndex, TargetCounts: targetCounts);
-                if (trigger.Delayed is { } fired)
+                if (trigger.Delayed is { Repeats: false } fired)
                     Emit(new DelayedTriggerRemoved(fired.Id));
                 Emit(new Triggered(item));
                 any = true;

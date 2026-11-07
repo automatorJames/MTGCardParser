@@ -199,6 +199,10 @@ public sealed partial class Game
         DealCombatDamage(first: false);
     }
 
+    /// <summary>What a creature assigns as combat damage: its power, or its toughness under the Doran rule.</summary>
+    static int CombatDamageOf(Characteristics traits) =>
+        traits.Has("AssignsDamageByToughness") ? traits.Toughness : traits.Power;
+
     void DealCombatDamage(bool first)
     {
         var state = State;
@@ -220,7 +224,7 @@ public sealed partial class Game
             if (!Deals(attacker))
                 continue;
             var traits = Characteristics.Of(state, attacker);
-            var power = traits.Power;
+            var power = CombatDamageOf(traits);
             if (power <= 0)
                 continue;
             var blockers = state.Battlefield.Where(x => x.Blocking == attacker.Id).OrderBy(x => x.Id.Value).ToList();
@@ -255,9 +259,9 @@ public sealed partial class Game
             if (!Deals(blocker))
                 continue;
             var traits = Characteristics.Of(state, blocker);
-            if (traits.Power <= 0 || state.Object(blocker.Blocking.Value)?.Attacking != true)
+            if (CombatDamageOf(traits) <= 0 || state.Object(blocker.Blocking.Value)?.Attacking != true)
                 continue;
-            assignments.Add((blocker.Id, TargetRef.Of(blocker.Blocking.Value), traits.Power));
+            assignments.Add((blocker.Id, TargetRef.Of(blocker.Blocking.Value), CombatDamageOf(traits)));
         }
 
         foreach (var (source, target, amount) in assignments)

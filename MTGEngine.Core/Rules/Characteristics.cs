@@ -27,6 +27,9 @@ public sealed record Characteristics(
     /// <summary>Whether a combat action is denied: "Attack", "Block", "BeBlocked".</summary>
     public bool Cant(string action) => Restrictions.Contains(action);
 
+    /// <summary>Whether a standing rule applies to the object: "AssignsDamageByToughness".</summary>
+    public bool Has(string rule) => Restrictions.Contains(rule);
+
     [ThreadStatic] static int _judgingCondition;
 
     static readonly ImmutableHashSet<string> _landTypes =
@@ -294,6 +297,12 @@ public sealed record Characteristics(
                     foreach (var keyword in grant.Alongside ?? [])
                         keywords.UnionWith(KeywordAbilities.NamesOf(keyword));
                     break;
+                case AssignsDamageByToughness:
+                    restrictions.Add("AssignsDamageByToughness");
+                    break;
+                case GainAbilitiesOf gained:
+                    abilities.AddRange(GainedAbilities(state, gained, EffectContext.Snapshot(state, source.Controller, source.Id)));
+                    break;
                 case LoseAllAbilities:
                     lost = true;
                     keywords.Clear();
@@ -424,6 +433,8 @@ public sealed record Characteristics(
             ExtraLandPlays { EachTurn: true, Duration: null } => [effect],
             DoesntUntap { If: null } => [effect],
             MustBlock { Duration: null } => [effect],
+            AssignsDamageByToughness { Duration: null } => [effect],
+            GainAbilitiesOf { Duration: null } => [effect],
             Sequence sequence => sequence.Steps.SelectMany(Continuous),
             _ => [],
         };
@@ -455,8 +466,58 @@ public sealed record Characteristics(
             DoesntUntap doesnt => doesnt.Objects ?? new Self(),
             // And blocking requirements (Game.DeclareBlockers).
             MustBlock must => must.Blockers ?? new Self(),
+            AssignsDamageByToughness doran => doran.Objects ?? new Self(),
+            GainAbilitiesOf gained => gained.Objects ?? new Self(),
             _ => null,
         };
+
+    /// <summary>
+    /// The abilities of a category <paramref name="gained"/> takes from other objects, as printed on them (a gained
+    /// ability can't itself gain, so the copying can't loop): "has all activated abilities of all creature cards exiled with it".
+    /// </summary>
+    public static IEnumerable<Ability> GainedAbilities(GameState state, GainAbilitiesOf gained, EffectContext ctx)
+    {
+        if (_judgingCondition > 2)
+            return [];
+        ImmutableList<ObjectId> from;
+        _judgingCondition++;
+        try { from = Resolver.Objects(gained.From, ctx); }
+        finally { _judgingCondition--; }
+        return from.Select(state.Object).Where(x => x is not null).SelectMany(x => x.Card.Abilities).Where(x => gained.Category switch
+        {
+            nameof(AbilityCategory.Activated) => x is ActivatedAbility,
+            nameof(AbilityCategory.Triggered) => x is TriggeredAbility,
+            _ => false,
+        }).ToList();
+    }
+
+    /// <summary>The effects of static abilities whose condition holds now, whatever they act on, each with its source; sequences flattened. For rules read elsewhere than an object's characteristics (hand sizes, untap steps).</summary>
+    public static IEnumerable<(Effect Effect, GameObject Source)> ActiveStatics(GameState state)
+    {
+        foreach (var source in state.Battlefield.Concat(state.Emblems))
+        {
+            if (state.Temporary.Any(x => x.Target == source.Id && x.LosesAbilities) || source.FaceDown)
+                continue;
+            var abilities = source.Card.Abilities.Concat(state.Temporary.Where(x => x.Target == source.Id && x.ActiveIn(state)).SelectMany(x => x.Abilities ?? []));
+            foreach (var ability in abilities.OfType<StaticAbility>())
+            {
+                if (ability.While is { } condition)
+                {
+                    bool? holds;
+                    _judgingCondition++;
+                    try { holds = Conditions.Evaluate(condition, EffectContext.Snapshot(state, source.Controller, source.Id)); }
+                    finally { _judgingCondition--; }
+                    if (holds != true)
+                        continue;
+                }
+                foreach (var effect in Flatten(ability.Effect))
+                    yield return (effect, source);
+            }
+        }
+    }
+
+    static IEnumerable<Effect> Flatten(Effect effect) =>
+        effect is Sequence sequence ? sequence.Steps.SelectMany(Flatten) : [effect];
 
     /// <summary>
     /// What "its activated abilities", "activated abilities of artifacts" belong to: the selector the abilities are of,

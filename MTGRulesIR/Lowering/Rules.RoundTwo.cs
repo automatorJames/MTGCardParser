@@ -256,6 +256,9 @@ public sealed partial class Lowerer
         Rule<G.WasKicked>((g, ctx) =>
             Lower(g.How, ctx) is Term how
                 ? new WasCastWith(LowerAs<Selector>(g.Subject, ctx), how.Value, ctx.TextOf(g)?.Contains("wasn't") == true, g.Twice)
+                // "This spell was cast using teamwork": the keyword it was cast with.
+                : g.How.GetResolvedValue() is G.CastUsingKeyword keyword
+                ? new WasCastWith(LowerAs<Selector>(g.Subject, ctx), keyword.Keyword.ToString(), ctx.TextOf(g)?.Contains("wasn't") == true, g.Twice)
                 : Opaque(typeof(Condition), ctx.TextOf(g), nameof(G.WasKicked)));
         Rule<G.HasCounters>((g, ctx) =>
         {

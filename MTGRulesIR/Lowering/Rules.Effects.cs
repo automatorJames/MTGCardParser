@@ -31,7 +31,7 @@ public sealed partial class Lowerer
         Rule<G.TapOrUntap>((g, ctx) =>
         {
             var objects = LowerAs<Selector>(g.Permanent, ctx);
-            var during = g.During is null ? null : Lower(g.During, ctx);
+            var during = g.During is null ? null : DurationOf(Lower(g.During, ctx));
 
             return g.Action switch
             {
@@ -62,10 +62,18 @@ public sealed partial class Lowerer
         Rule<G.PowerToughness>((g, ctx) => new StatsMod(QuantityOf(g.Power), QuantityOf(g.Toughness)));
 
         Rule<G.DealDamage>((g, ctx) =>
-            new DealDamage(ctx.Subject ?? new Self(), LowerAll(g.Portions, ctx).Select(x => x as DamagePortion ?? new DamagePortion((Quantity)Opaque(typeof(Quantity), (x as IOpaque)?.Text ?? x.ToString(), x.GetType().Name), null)).ToList()));
+        {
+            var portions = LowerAll(g.Portions, ctx).Select(x => x as DamagePortion ?? new DamagePortion((Quantity)Opaque(typeof(Quantity), (x as IOpaque)?.Text ?? x.ToString(), x.GetType().Name), null)).ToList();
+            // A portion's kind ("combat damage") is the damage's kind.
+            var kind = portions.Select(x => x.Kind).FirstOrDefault(x => x is not null);
+            return new DealDamage(ctx.Subject ?? new Self(), kind is null ? portions : portions.Select(x => x with { Kind = null }).ToList(), Kind: kind);
+        });
 
         Rule<G.DamageTo>((g, ctx) =>
-            new DamagePortion(g.EqualTo is null ? LowerAs<Quantity>(g.Amount, ctx) : LowerAs<Quantity>(g.EqualTo, ctx), LowerAs<Selector>(g.Recipient, ctx)));
+            // "Would deal combat damage to a player": no amount, but a kind.
+            g.Amount.GetResolvedValue() is G.AnyDamage any && g.EqualTo is null
+                ? new DamagePortion(null, LowerAs<Selector>(g.Recipient, ctx), any.Kind?.ToString())
+                : new DamagePortion(g.EqualTo is null ? LowerAs<Quantity>(g.Amount, ctx) : LowerAs<Quantity>(g.EqualTo, ctx), LowerAs<Selector>(g.Recipient, ctx)));
 
         Rule<G.DamageAmount>((g, ctx) => QuantityOf(g.Quantity));
 

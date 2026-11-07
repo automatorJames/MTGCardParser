@@ -156,6 +156,18 @@ public static class Interpreter
             case StillOfKind:
                 return ctx;
 
+            // "Until end of turn, whenever a player taps an island for mana, …": a trigger that lasts for a time.
+            case Lasting { Effect: Delayed scoped } lasting:
+            {
+                var expires = UntilTurn(lasting.Duration, state, ctx.Controller);
+                if (expires is null)
+                    return Skipped(game, lasting, "duration not understood", ctx);
+                var targets = scoped.When is ObjectEvent { Subject: ObjectSelector { Quantifier: Quantifier.Target } targeted } ? Resolver.Targets(targeted, ctx) : [];
+                TargetRef? subject = targets.Count > 0 ? targets[0] : ctx.TriggerSubject ?? ctx.Last?.FirstOrDefault();
+                game.Emit(new DelayedTriggerCreated(new DelayedTrigger(state.NextDelayedId, scoped.When, scoped.Effect, ctx.Controller, ctx.Source, subject, expires == -1 ? null : expires, Repeats: true)));
+                return ctx;
+            }
+
             case Lasting lasting:
                 return Execute(WithDuration(lasting.Effect, lasting.Duration), ctx);
 
@@ -418,6 +430,9 @@ public static class Interpreter
 
             case CreateTokens create:
             {
+                // "Create twelve of those tokens instead": the tokens the card described earlier.
+                if (create.Token is ThoseTokens && ctx.Source is { } describing && state.Object(describing) is { } describer)
+                    create = create with { Token = describer.Card.Abilities.SelectMany(MTGRulesIR.Lowering.NodeWalker.Nodes).OfType<CreateTokens>().Select(x => x.Token).FirstOrDefault(x => x is TokenSpec or TokenCopy) ?? create.Token };
                 var count = (Quantities.Evaluate(create.Count, ctx) ?? 1) * (create.PerEach is null ? 1 : Quantities.Evaluate(create.PerEach, ctx) ?? 1);
                 if (create.Token is TokenCopy copy)
                 {
@@ -497,6 +512,29 @@ public static class Interpreter
             }
 
             // "Move a +1/+1 counter from target creature onto a second target creature", "move all counters from this onto target creature".
+            // "Until end of turn, target creature … assigns combat damage equal to its toughness rather than its power."
+            case AssignsDamageByToughness byToughness when byToughness.Duration is not null:
+            {
+                var until = UntilTurn(byToughness.Duration, state, ctx.Controller);
+                if (until is null)
+                    return Skipped(game, byToughness, "duration not understood", ctx);
+                foreach (var id in byToughness.Objects is null or Self ? (ctx.Source is { } own ? [own] : []) : Resolver.Objects(byToughness.Objects, ctx))
+                    game.Emit(new TemporaryEffectAdded(Hold(new TemporaryEffect(id, 0, 0, [], until == -1 ? null : until, Restrictions: ["AssignsDamageByToughness"]), effect, ctx)));
+                return ctx;
+            }
+
+            // "Gains all activated abilities of target creature until end of turn": those abilities, as of now.
+            case GainAbilitiesOf gained when gained.Duration is not null:
+            {
+                var until = UntilTurn(gained.Duration, state, ctx.Controller);
+                if (until is null)
+                    return Skipped(game, gained, "duration not understood", ctx);
+                var gainedAbilities = Characteristics.GainedAbilities(state, gained, ctx).ToImmutableList();
+                foreach (var id in gained.Objects is null or Self ? (ctx.Source is { } own ? [own] : []) : Resolver.Objects(gained.Objects, ctx))
+                    game.Emit(new TemporaryEffectAdded(Hold(new TemporaryEffect(id, 0, 0, [], until == -1 ? null : until, Abilities: gainedAbilities), effect, ctx)));
+                return ctx;
+            }
+
             case AssignsNoCombatDamage noDamage when noDamage.Duration is ThisTurn or UntilPhase { Phase.Phase: "EndOfTurn" }:
             {
                 foreach (var id in noDamage.Objects is null or Self ? (ctx.Source is { } own ? [own] : []) : Resolver.Objects(noDamage.Objects, ctx))

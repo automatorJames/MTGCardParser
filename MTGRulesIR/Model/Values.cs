@@ -77,6 +77,8 @@ public sealed record IsKind(Selector Object, IReadOnlyList<Term> Kinds, bool Neg
 
 public sealed record And(IReadOnlyList<Condition> Conditions) : Condition;
 
+public sealed record Or(IReadOnlyList<Condition> Conditions) : Condition;
+
 /// <summary>What a triggered ability waits for.</summary>
 public abstract record Event : IrNode;
 
@@ -168,8 +170,8 @@ public sealed record HasKeywordsCondition(Selector Object, IReadOnlyList<string>
 /// <summary>Whether a spell targets something: "if it targets a creature with power 3 or less".</summary>
 public sealed record Targets(Selector Spell, Selector Target) : Condition;
 
-/// <summary>Who cast a spell, and from where: "you cast it from your hand".</summary>
-public sealed record WasCast(Selector Spell, Selector By, ZoneRef From = null, bool Negated = false) : Condition;
+/// <summary>Who cast a spell, from where, and when: "you cast it from your hand", "you cast this spell during your main phase".</summary>
+public sealed record WasCast(Selector Spell, Selector By, ZoneRef From = null, bool Negated = false, PhaseRef During = null) : Condition;
 
 /// <summary>Whether an object was acted on by an earlier effect on the line: "if a card was milled this way".</summary>
 public sealed record WasAffectedThisWay(Selector Object, string Action) : Condition;
@@ -241,3 +243,9 @@ public sealed record ThereAre(Selector Objects) : Condition;
 
 /// <summary>A pawprint cost: "{p}{p} — …".</summary>
 public sealed record PawprintCost(int Count) : Cost;
+
+/// <summary>How much mana, or mana of a kind ("{s}"), was spent to cast a spell, as an amount.</summary>
+public sealed record AmountOfManaSpent(Selector For, string Kind = null) : Quantity;
+
+/// <summary>Whether it's day, night, or neither.</summary>
+public sealed record DayNight(string State) : Condition;

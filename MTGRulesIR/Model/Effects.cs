@@ -86,7 +86,8 @@ public sealed record MustBlock(Selector Blockers, Selector Attacker, Duration Du
 /// <summary>Objects losing all abilities.</summary>
 public sealed record LoseAllAbilities(Selector Objects) : Effect;
 
-public sealed record DamagePortion(Quantity Amount, Selector To) : IrNode;
+/// <summary>Damage dealt to one recipient: the amount (null for damage of no stated amount, as a replacement's condition speaks of it) and, when the portion says so, its kind (combat, noncombat).</summary>
+public sealed record DamagePortion(Quantity Amount, Selector To, string Kind = null) : IrNode;
 
 public sealed record GainLife(Selector Player, Quantity Amount) : Effect;
 
@@ -102,11 +103,13 @@ public sealed record Exile(Selector Objects, Duration Until = null, CounterSpec 
 /// </summary>
 public sealed record Pump(Selector Objects, Quantity Power = null, Quantity Toughness = null, IReadOnlyList<KeywordInstance> Keywords = null, StatsMod BaseStats = null, Duration Duration = null, bool Remove = false, Quantity PerEach = null, IReadOnlyList<KeywordInstance> ChoiceOf = null) : Effect;
 
-public sealed record Tap(Selector Objects, IrNode During = null) : Effect;
+/// <summary>Objects tapped - or, with <paramref name="During"/>, a standing rule to tap them at a step: "tap all creatures you control during each opponent's untap step".</summary>
+public sealed record Tap(Selector Objects, Duration During = null) : Effect;
 
-public sealed record Untap(Selector Objects, IrNode During = null) : Effect;
+/// <summary>Objects untapped - or, with <paramref name="During"/>, a standing rule to untap them at a step: "untap all permanents you control during each other player's untap step".</summary>
+public sealed record Untap(Selector Objects, Duration During = null) : Effect;
 
-public sealed record TapOrUntap(Selector Objects, IrNode During = null) : Effect;
+public sealed record TapOrUntap(Selector Objects, Duration During = null) : Effect;
 
 public sealed record PutCounters(Selector Objects, CounterSpec Counters) : Effect;
 
@@ -126,8 +129,11 @@ public sealed record OpaqueToken(string Text, string Glyph) : Token, IOpaque;
 /// <summary>A token that is a copy of another object, with the exceptions the text makes ("except it's a 1/1").</summary>
 public sealed record TokenCopy(Selector Of, bool Tapped = false, StatsMod Stats = null, IReadOnlyList<Effect> Exceptions = null) : Token;
 
+/// <summary>The tokens an earlier effect of the card described, made again: "create twelve of those tokens instead".</summary>
+public sealed record ThoseTokens : Token;
+
 /// <summary>A token described in full: its types, subtypes, colors, stats, name, keywords, and the abilities it has beyond keywords.</summary>
-public sealed record TokenSpec(IReadOnlyList<string> Types = null, IReadOnlyList<string> Subtypes = null, IReadOnlyList<string> Colors = null, Quantity Power = null, Quantity Toughness = null, string Name = null, IReadOnlyList<KeywordInstance> Keywords = null, IReadOnlyList<Ability> Abilities = null, bool Tapped = false, bool Attacking = false, string Predefined = null, Selector AttachedTo = null) : Token;
+public sealed record TokenSpec(IReadOnlyList<string> Types = null, IReadOnlyList<string> Subtypes = null, IReadOnlyList<string> Colors = null, Quantity Power = null, Quantity Toughness = null, string Name = null, IReadOnlyList<KeywordInstance> Keywords = null, IReadOnlyList<Ability> Abilities = null, bool Tapped = false, bool Attacking = false, string Predefined = null, Selector AttachedTo = null, bool Legendary = false) : Token;
 
 public sealed record Sacrifice(Selector Player, Selector Objects) : Effect;
 
@@ -351,3 +357,15 @@ public sealed record ManaDoesntEmpty(Duration Duration = null) : Effect;
 
 /// <summary>A card that may begin the game on the battlefield from the opening hand.</summary>
 public sealed record BeginGameOnBattlefield : Effect;
+
+/// <summary>Creatures that assign combat damage by their toughness rather than their power (the Doran rule).</summary>
+public sealed record AssignsDamageByToughness(Selector Objects, Duration Duration = null) : Effect;
+
+/// <summary>A player's maximum hand size set to an amount or changed by one (signed): "your maximum hand size is two", "each opponent's maximum hand size is reduced by one".</summary>
+public sealed record MaximumHandSize(Selector Player, Quantity Size = null, Quantity Change = null, bool RestOfGame = false) : Effect;
+
+/// <summary>Objects having every ability of a category that other objects have: "has all activated abilities of all creature cards exiled with it".</summary>
+public sealed record GainAbilitiesOf(Selector Objects, Selector From, string Category, Duration Duration = null) : Effect;
+
+/// <summary>The Ward cycle's exception: the protection this aura grants doesn't make the aura fall off.</summary>
+public sealed record ProtectionDoesntRemoveThis : Effect;

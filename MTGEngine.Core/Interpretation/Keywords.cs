@@ -13,7 +13,7 @@ public static class Keywords
         "Evoke", "Dash", "Plot", "Entwine", "Storm", "Delve", "Improvise", "Spree", "Offspring", "Warp", "Awaken", "Bestow", "Overload", "Escape", "Retrace", "SplitSecond", "Casualty", "Cascade", "Dredge", "Sneak", "Surge", "Spectacle", "Blitz", "JumpStart", "Prototype", "Splice", "Miracle",
         // Expanded into abilities (see KeywordAbilities).
         "Equip", "Cycling", "Typecycling", "Unearth", "LevelUp", "Crew", "Prowess", "Exalted", "Flanking", "Bushido", "Bloodthirst", "Ward", "Echo", "CumulativeUpkeep", "Vanishing", "Fading", "Soulshift", "Fabricate", "Backup", "StartYourEngines", "Renown", "Sunburst", "Learn", "Ninjutsu",
-        "Scavenge", "Embalm", "Eternalize", "Transmute", "Modular", "Unleash", "Mentor", "Evolve", "Extort", "Clash",
+        "Scavenge", "Embalm", "Eternalize", "Transmute", "Modular", "Unleash", "Mentor", "Evolve", "Extort", "Clash", "Rampage",
         "Saddle", "Station", "Riot", "Afflict", "Annihilator", "Outlast", "Decayed", "Reinforce", "Ingest", "Graft", "Incubate", "Earthbend",
         "Scry", "Surveil", "Investigate", "Proliferate", "Fateseal", "Populate", "Bolster", "Explore", "Adapt",
         // Read where they apply.

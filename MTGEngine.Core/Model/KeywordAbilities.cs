@@ -91,9 +91,6 @@ public static class KeywordAbilities
             foreach (var keyword in line.Keywords)
                 foreach (var expanded in Of(keyword, spell, list.Skip(i + 1).ToList()))
                     yield return expanded;
-            foreach (var other in line.Other ?? [])
-                if (Rampage(other) is { } rampage)
-                    yield return rampage;
         }
     }
 
@@ -149,6 +146,10 @@ public static class KeywordAbilities
                 break;
             case "Bushido":
                 yield return new TriggeredAbility(new ObjectEvent(new Self(), ["BlocksOrBecomesBlocked"]), new Pump(new Self(), new Fixed(amount), new Fixed(amount), Duration: EndOfTurn));
+                break;
+            // Rampage N: whenever it becomes blocked, +N/+N until end of turn for each creature blocking it beyond the first.
+            case "Rampage":
+                yield return new TriggeredAbility(new ObjectEvent(new Self(), ["BecomesBlocked"]), new Pump(new Self(), new Fixed(amount), new Fixed(amount), PerEach: new BlockersBeyondFirst(), Duration: EndOfTurn));
                 break;
             case "Bloodthirst":
                 yield return new ReplacementAbility(new EntersBattlefield(new Self(), With: [new PutCounters(null, new CounterSpec("+1/+1", new Fixed(amount)))],
@@ -392,14 +393,8 @@ public static class KeywordAbilities
         }
     }
 
-    /// <summary>Rampage N, which the lowering leaves as text: whenever it becomes blocked, +N/+N until end of turn for each creature blocking it beyond the first.</summary>
-    static TriggeredAbility Rampage(IrNode other) =>
-        other is OpaqueNode { Glyph: "Rampage", Text: var text } && int.TryParse(text.Split(' ').LastOrDefault(), out var n)
-            ? new TriggeredAbility(new ObjectEvent(new Self(), ["BecomesBlocked"]), new Pump(new Self(), new Fixed(n), new Fixed(n), PerEach: new BlockersBeyondFirst(), Duration: EndOfTurn))
-            : null;
-
     /// <summary>Whether the engine carries out a keyword line's entry the lowering left as text.</summary>
-    public static bool OtherHandled(IrNode other) => Rampage(other) is not null;
+    public static bool OtherHandled(IrNode other) => false;
 
     /// <summary>A keyword cost as a cost the engine pays: "blight 1" puts a -1/-1 counter on a creature you control, "collect evidence 3" exiles cards from your graveyard. Any other cost as it is.</summary>
     public static Cost CostOf(Cost cost) =>
