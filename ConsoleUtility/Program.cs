@@ -67,6 +67,11 @@ internal class Program
                 Interpret.Run(args[1], args.ElementAtOrDefault(2));
                 break;
 
+            // blocked-by rules.jsonl kind: the cards whose only blocker is that node kind (named as the interpret report names it), with the lines it blocks.
+            case "blocked-by":
+                Interpret.ListBlockedBy(args[1], args[2]);
+                break;
+
             // simulate rules.jsonl [games] [seed]: random games of the corpus's executable cards; exceptions and run-time skips.
             case "simulate":
                 Simulate.Run(args[1], int.TryParse(args.ElementAtOrDefault(2), out var simulated) ? simulated : 200, int.TryParse(args.ElementAtOrDefault(3), out var simulateSeed) ? simulateSeed : 1);

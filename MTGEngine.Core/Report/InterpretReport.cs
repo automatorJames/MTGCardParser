@@ -13,11 +13,18 @@ public sealed class InterpretReport
     readonly Dictionary<string, (int Lines, string Example)> _blockers = new();
     readonly Dictionary<string, (int Cards, string Example)> _soleBlockers = new();
 
+    /// <summary>A node kind to list the blocked cards of: each card whose only blocker it is, with the lines it blocks (<c>blocked-by</c>).</summary>
+    public string Listing { get; init; }
+
+    /// <summary>The cards and lines <see cref="Listing"/> blocks, where it is the card's only blocker.</summary>
+    public List<(string Card, string Line)> Listed { get; } = [];
+
     public void Add(CardRules card)
     {
         _cards++;
         var allExecutable = true;
         var cardBlockers = new HashSet<string>();
+        List<string> listed = [];
 
         foreach (var line in card.Lines)
         {
@@ -38,6 +45,8 @@ public sealed class InterpretReport
                 foreach (var kind in line.EngineClosed ? unsupported : unsupported.Count == 0 ? ["(not engine-closed)"] : unsupported)
                 {
                     cardBlockers.Add(kind);
+                    if (kind == Listing)
+                        listed.Add(line.Text);
                     var (count, example) = _blockers.GetValueOrDefault(kind);
                     _blockers[kind] = (count + 1, example ?? line.Text);
                 }
@@ -51,6 +60,9 @@ public sealed class InterpretReport
             var kind = cardBlockers.Single();
             var (count, example) = _soleBlockers.GetValueOrDefault(kind);
             _soleBlockers[kind] = (count + 1, example ?? card.Name);
+            if (kind == Listing)
+                foreach (var text in listed)
+                    Listed.Add((card.Name, text));
         }
     }
 

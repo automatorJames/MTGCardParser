@@ -22,4 +22,19 @@ static class Interpret
         File.WriteAllText(target, text);
         Console.WriteLine(text);
     }
+
+    /// <summary>
+    /// <c>blocked-by rules.jsonl kind</c>: the cards whose only blocker is the node kind named as the interpret report names
+    /// it ("Term[StackAbilityKind]", "AdditionalPhase"), each with the line text it blocks: the work list for one engine item.
+    /// </summary>
+    public static void ListBlockedBy(string rulesPath, string kind)
+    {
+        var report = new InterpretReport { Listing = kind };
+        foreach (var line in File.ReadLines(rulesPath))
+            if (!string.IsNullOrWhiteSpace(line))
+                report.Add(IrJson.Deserialize<CardRules>(line));
+        foreach (var (card, text) in report.Listed)
+            Console.WriteLine($"{card} | {text}");
+        Console.WriteLine($"{report.Listed.Select(x => x.Card).Distinct().Count()} cards, {report.Listed.Count} lines blocked only by {kind}");
+    }
 }
