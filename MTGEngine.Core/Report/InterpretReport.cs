@@ -113,7 +113,7 @@ public static class InterpreterSupport
         typeof(LookAt), typeof(Reveal), typeof(LetVariable), typeof(ForEachOf), typeof(ChoiceOf), typeof(RemoveFromCombat),
         typeof(KeywordAction), typeof(UnlessPaid), typeof(CombatRestriction), typeof(GrantAbility), typeof(Delayed), typeof(SearchLibrary), typeof(DoesntUntap),
         typeof(ChooseCards), typeof(ChooseModes), typeof(Regenerate), typeof(EntersBattlefield), typeof(AsEventHappens), typeof(PayCost),
-        typeof(ChooseEffect), typeof(BecomesAspect), typeof(PreventDamage), typeof(DamageCantBePrevented), typeof(CantGainLife), typeof(RedirectDamage), typeof(CostModification),
+        typeof(ChooseEffect), typeof(BecomesAspect), typeof(PreventDamage), typeof(DamageCantBePrevented), typeof(CantGainLife), typeof(AdditionalPhase), typeof(RedirectDamage), typeof(CostModification),
         typeof(PlayCard), typeof(CantBeRegenerated), typeof(CantBeTargeted), typeof(MustCombat), typeof(SetStats), typeof(Replacement),
         typeof(Otherwise), typeof(StillOfKind), typeof(Remains), typeof(RevealUntil), typeof(CantPlay), typeof(GetEnergy), typeof(CanAsThough), typeof(Convoke),
         typeof(CopySpell), typeof(DistributeCounters), typeof(MoveCounters), typeof(AssignsNoCombatDamage), typeof(ExchangeControl), typeof(Phasing), typeof(MustBlock), typeof(MustBeBlocked), typeof(DoubleCounters), typeof(DoubleStats), typeof(SwitchStats), typeof(ChangeTargets), typeof(CantBeActivated), typeof(CanBlock), typeof(CreateEmblem),
@@ -200,10 +200,12 @@ public static class InterpreterSupport
             yield break;
         if (line.Abilities is not [var first, ..] || CardDefinition.Unwrap(first) is not EffectLine effectLine)
             yield break;
-        if (CardDefinition.AsStatic(effectLine) is StaticAbility statics)
+        var parts = CardDefinition.AsStatics(effectLine).ToList();
+        if (parts.All(x => x is StaticAbility || x is ReplacementAbility { Effect: EntersBattlefield }))
         {
-            if (!IsStaticHandled(Characteristics.WithoutPhase(statics.Effect)))
-                yield return $"StaticAbility[{statics.Effect.GetType().Name}]";
+            foreach (var statics in parts.OfType<StaticAbility>())
+                if (!IsStaticHandled(Characteristics.WithoutPhase(statics.Effect)))
+                    yield return $"StaticAbility[{statics.Effect.GetType().Name}]";
             yield break;
         }
         var read = effectLine.Effect switch

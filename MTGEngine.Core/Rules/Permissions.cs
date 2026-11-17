@@ -64,7 +64,7 @@ public sealed partial class Game
     public static bool PlayFromHandled(MayPlayFrom from) =>
         from is { Player: PlayerSelector { Kind: PlayerKind.You }, Duration: null or While, Using: null, Free: false, Plays.Count: > 0 }
         && (from.From is { Zone: nameof(Zone.Library), Position: "Top" } && from.Plays.All(x => x.What is ObjectSelector)
-            || from.From?.Zone is nameof(Zone.Graveyard) or nameof(Zone.Exile) && from.Plays.All(x => x.What is Self));
+            || from.From?.Zone is nameof(Zone.Graveyard) or nameof(Zone.Exile) && from.Plays.All(x => x.What is Self or ObjectSelector));
 
     /// <summary>Whether a play permission's verb and selector allow <paramref name="player"/> playing <paramref name="card"/>: "play" lands or spells, "cast" spells only.</summary>
     bool PlayableBy(Playable play, GameObject card, PlayerId player, ObjectId source)
@@ -89,10 +89,22 @@ public sealed partial class Game
                     break;
                 }
 
+        // "You may play lands from your graveyard", "you may cast spells from among cards exiled with this creature": a
+        // permanent's permission for the cards its filter names, in your graveyard or in exile.
+        foreach (var (effect, _, source) in Characteristics.StaticEffects(State))
+            if (effect is MayPlayFrom { From.Zone: nameof(Zone.Graveyard) or nameof(Zone.Exile) } elsewhere && source.Controller == player && PlayFromHandled(elsewhere) && elsewhere.Plays.All(x => x.What is ObjectSelector))
+            {
+                var zone = elsewhere.From.Zone == nameof(Zone.Graveyard) ? Zone.Graveyard : Zone.Exile;
+                var yours = zone == Zone.Graveyard && elsewhere.From.Owner is null or PlayerSelector { Kind: PlayerKind.You };
+                foreach (var card in State.Objects.Values.Where(x => x.Zone == zone && !x.FaceDown && (!yours || x.Owner == player)).ToList())
+                    if (elsewhere.Plays.Any(x => PlayableBy(x, card, player, source.Id)))
+                        yield return (new PlayPermission(card.Id, player, card.ZoneChangeCount, null, false), card);
+            }
+
         foreach (var obj in State.Objects.Values.Where(x => x.Owner == player && x.Zone is Zone.Graveyard or Zone.Exile && !x.FaceDown).ToList())
             foreach (var ability in obj.Card.Abilities.Concat(State.Temporary.Where(x => x.Target == obj.Id && x.ActiveIn(State)).SelectMany(x => x.Abilities ?? [])).OfType<StaticAbility>())
             {
-                if (ability.Effect is not MayPlayFrom own || !PlayFromHandled(own) || own.From.Zone != obj.Zone.ToString() || !own.Plays.Any(x => PlayableBy(x, obj, player, obj.Id)))
+                if (ability.Effect is not MayPlayFrom own || !PlayFromHandled(own) || own.From.Zone != obj.Zone.ToString() || !own.Plays.All(x => x.What is Self) || !own.Plays.Any(x => PlayableBy(x, obj, player, obj.Id)))
                     continue;
                 if (ability.While is { } condition && Conditions.Evaluate(condition, new EffectContext(this, player, obj.Id, new Dictionary<IrNode, ImmutableList<TargetRef>>(ReferenceEqualityComparer.Instance))) != true)
                     continue;

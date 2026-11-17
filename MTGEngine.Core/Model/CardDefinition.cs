@@ -31,7 +31,7 @@ public sealed record CardDefinition(
         // On an instant or sorcery, "if that creature would die this turn, exile it instead" is set up as the spell resolves.
         var abilities = InsteadRewrite.Rewrite(Modal.Rewrite(LastingUntaps(rules.Lines.Select(FoldIntoMode).SelectMany(WithoutCastingReminders).Select(Unwrap))
             .Select(x => spell && x is ReplacementAbility { Effect: Replacement replacement } ? new SpellAbility(replacement) : x)
-            .Select(x => spell ? x : AsStatic(x)))).ToImmutableList();
+            .SelectMany(x => spell ? new[] { x } : AsStatics(x)))).ToImmutableList();
         abilities = Levels.Rewrite(KeywordAbilities.Expand(abilities, spell), stationCreature: info.Power is not null).ToImmutableList();
         // A card's keywords are its keyword lines'. The database's keyword list also names ability words, keyword
         // actions, and a double-faced card's back face (Delver of Secrets would fly), so it isn't read.
@@ -211,6 +211,57 @@ public sealed record CardDefinition(
     }
 
     /// <summary>A permanent's effect line that states a continuous effect, as the static ability it is: "this creature attacks each combat if able", "as long as …, it gets +1/+1".</summary>
+    /// <summary>
+    /// A permanent's effect line as static abilities: <see cref="AsStatic"/>, or, for a sequence of continuous effects under
+    /// one "as long as" condition with an "enters tapped" replacement alongside ("enters tapped and doesn't untap during your
+    /// untap step", "gets +1/+1 and has trample as long as …"), the static for the continuous steps and the replacement.
+    /// </summary>
+    public static IEnumerable<Ability> AsStatics(Ability ability)
+    {
+        if (ability is EffectLine { Effect: var effect } && SplitStatic(effect) is { } split)
+            return split;
+        return [AsStatic(ability)];
+    }
+
+    static List<Ability> SplitStatic(Effect effect)
+    {
+        var steps = effect is Sequence sequence ? sequence.Steps.ToList() : [effect];
+        if (steps.Count == 0)
+            return null;
+        List<Effect> continuous = [];
+        List<Ability> alongside = [];
+        Condition holds = null;
+        foreach (var step in steps)
+        {
+            var (plain, condition) = WithoutWhile(step);
+            if (plain is EntersBattlefield { Objects: null or Self } enters && condition is null)
+            {
+                alongside.Add(new ReplacementAbility(enters));
+                continue;
+            }
+            if (plain is null || !Characteristics.IsContinuous(plain))
+                return null;
+            holds ??= condition;
+            continuous.Add(plain);
+        }
+        if (continuous.Count == 0 || alongside.Count == 0 && holds is null)
+            return null;
+        List<Ability> parts = [new StaticAbility(continuous.Count == 1 ? continuous[0] : new Sequence(continuous), holds)];
+        parts.AddRange(alongside);
+        return parts;
+    }
+
+    /// <summary>An effect without a "for as long as …" duration, with that duration's condition; the effect itself and null when it has none.</summary>
+    static (Effect Effect, Condition Condition) WithoutWhile(Effect effect)
+    {
+        var property = effect?.GetType().GetProperty("Duration");
+        if (property?.GetValue(effect) is not While { Condition: { } condition })
+            return (effect, null);
+        var copy = (Effect)effect.GetType().GetMethod("<Clone>$")!.Invoke(effect, null);
+        property.SetValue(copy, null);
+        return (copy, condition);
+    }
+
     public static Ability AsStatic(Ability ability) =>
         ability switch
         {

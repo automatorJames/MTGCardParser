@@ -572,6 +572,9 @@ public static class Interpreter
                 game.Emit(new LifeGainBanned(new LifeGainBan(banned, until is null or -1 ? null : until)));
                 return ctx;
             }
+            case AdditionalPhase extra:
+                game.AddPhase(extra);
+                return ctx;
             case DamageCantBePrevented cantPrevent:
             {
                 // "The damage can't be prevented" on a spell is read where the spell's damage is dealt (Game.IsUnpreventable).

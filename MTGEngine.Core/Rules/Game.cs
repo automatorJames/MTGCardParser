@@ -156,17 +156,55 @@ public sealed partial class Game
         }
     }
 
+    /// <summary>The steps of the turn being played, in order; additional phases are inserted as effects add them.</summary>
+    List<Step> _turnSteps;
+    int _stepIndex;
+
     public void PlayTurn(PlayerId player)
     {
         Emit(new TurnBegan(State.Turn + 1, player));
         _attackersThisCombat = false;
 
-        foreach (var step in Enum.GetValues<Step>())
+        _turnSteps = [.. Enum.GetValues<Step>()];
+        for (_stepIndex = 0; _stepIndex < _turnSteps.Count; _stepIndex++)
         {
             if (State.Over)
                 return;
-            BeginStep(step);
+            BeginStep(_turnSteps[_stepIndex]);
         }
+        _turnSteps = null;
+    }
+
+    static bool IsCombatStep(Step step) => step is Step.BeginCombat or Step.DeclareAttackers or Step.DeclareBlockers or Step.CombatDamage or Step.EndCombat;
+
+    /// <summary>
+    /// "After this phase, there is an additional combat phase", "after this main phase, there is an additional combat phase
+    /// followed by an additional main phase": the steps are inserted after the phase the effect resolves in (or after the
+    /// second main phase when it says so), once or twice.
+    /// </summary>
+    public void AddPhase(AdditionalPhase extra)
+    {
+        if (_turnSteps is null || _stepIndex >= _turnSteps.Count)
+            return;
+        List<Step> steps = extra.Phase switch
+        {
+            "CombatPhase" or "Combat" => [Step.BeginCombat, Step.DeclareAttackers, Step.DeclareBlockers, Step.CombatDamage, Step.EndCombat],
+            "Upkeep" or "UpkeepStep" => [Step.Upkeep],
+            "MainPhase" or "Main" => [Step.Main2],
+            _ => null,
+        };
+        if (steps is null)
+            return;
+        if (extra.FollowedByMainPhase)
+            steps.Add(Step.Main2);
+        var at = _stepIndex;
+        if (extra.Anchor == "AfterSecondMainPhase")
+            at = Math.Max(at, _turnSteps.FindIndex(_stepIndex, x => x == Step.Main2));
+        else if (IsCombatStep(_turnSteps[_stepIndex]))
+            at = Math.Max(at, _turnSteps.FindIndex(_stepIndex, x => x == Step.EndCombat));
+        var times = extra.Count == "Two" ? 2 : 1;
+        for (var i = 0; i < times; i++)
+            _turnSteps.InsertRange(at + 1, steps);
     }
 
     /// <summary>The step "skip your next … step" names, for the steps the engine can skip (a whole combat is its beginning step).</summary>
@@ -196,6 +234,8 @@ public sealed partial class Game
             return;
         _skippingCombat = false;
 
+        if (step == Step.BeginCombat)
+            _attackersThisCombat = false;
         if (step is Step.DeclareBlockers or Step.CombatDamage && !_attackersThisCombat)
             return;
 
