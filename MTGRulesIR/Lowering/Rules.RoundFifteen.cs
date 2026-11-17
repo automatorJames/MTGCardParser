@@ -12,6 +12,8 @@ public sealed partial class Lowerer
     void RegisterRoundFifteen()
     {
         Rule<G.TapToReduceCost>((g, ctx) => null);
+        // "4 or more damage", "3 or less damage": a bound on an amount of damage.
+        Rule<G.DamageThreshold>((g, ctx) => new Bound(LowerAs<Quantity>(g.Count, ctx), g.Bound == G.CountBound.AtLeast ? Comparison.GreaterOrEqual : Comparison.LessOrEqual));
 
         // Selectors.
         Rule<G.AttachmentHost>((g, ctx) => new ObjectSelector(Quantifier.Any, FilterOf(ctx, kinds: g.Kind, controller: g.Controller)));

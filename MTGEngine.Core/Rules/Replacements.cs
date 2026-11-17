@@ -46,17 +46,71 @@ public sealed partial class Game
     /// A damage replacement that changes how much is dealt, to the same recipient by the same source: "it deals double
     /// that damage instead", "it deals that much damage plus 1 instead", "minus 1".
     /// </summary>
-    public static (Selector From, Selector To, string Kind, Adjusted Amount)? DamageModifier(Replacement replacement)
+    public static (Selector From, Selector To, string Kind, Quantity Amount, Bound Threshold)? DamageModifier(Replacement replacement)
     {
         if (replacement.Would is not WouldHappen { What: DealDamage dealt } would)
             return null;
-        if (replacement.Instead is not Instead { Effect: DealDamage { Portions: [{ Amount: Adjusted { Base: Special { Kind: "ThatMuch" } } adjusted, To: Reference or Self or null }] } instead })
+        // The recipient of the replaced damage is the same as the recipient in the "would" ("to that permanent or player",
+        // "to you", "to this creature"); the "would" side is what gets matched, so the instead's recipient is only read for shape.
+        if (replacement.Instead is not Instead { Effect: DealDamage { Portions: [{ Amount: { } amount, To: Reference or Self or PlayerSelector or ObjectSelector or null }] } instead })
             return null;
-        if (instead.Source is not (Reference or Self or null) || dealt.Portions?.Any(x => x.Amount is not null) == true)
+        if (instead.Source is not (Reference or Self or null))
             return null;
-        var valid = adjusted.Factor == "Twice" && adjusted.Adjustment is null || adjusted.Factor is null && adjusted.Adjustment is Fixed;
-        return valid ? (dealt.Source ?? would.Subject, dealt.Portions?.FirstOrDefault()?.To, dealt.Kind, adjusted) : null;
+        // "If a source would deal 4 or more damage …": a threshold on the amount that would be dealt.
+        var threshold = dealt.Portions?.FirstOrDefault()?.Amount;
+        if (threshold is not (null or Bound { Value: Fixed }))
+            return null;
+        return ModifiedAmount(amount) ? (dealt.Source ?? would.Subject, dealt.Portions?.FirstOrDefault()?.To, dealt.Kind, amount, threshold as Bound) : null;
     }
+
+    /// <summary>Whether a replaced damage amount can be computed from the damage that would be dealt: doubled, halved, plus or minus a number or a count, or a fixed number.</summary>
+    static bool ModifiedAmount(Quantity amount) =>
+        amount switch
+        {
+            Adjusted { Base: Special { Kind: "ThatMuch" } } adjusted => adjusted.Factor == "Twice" && adjusted.Adjustment is null || adjusted.Factor is null && adjusted.Adjustment is Fixed,
+            Scaled { Base: Special { Kind: "ThatMuch" }, Factor: "Twice" or "Half" } => true,
+            Arithmetic { Left: Special { Kind: "ThatMuch" }, Operator: "Plus" or "Minus", Right: not null } => true,
+            Fixed => true,
+            _ => false,
+        };
+
+    /// <summary>The replaced amount for <paramref name="amount"/> of damage, or null when a count in it can't be evaluated.</summary>
+    static int? ApplyModifier(Quantity modifier, int amount, EffectContext ctx)
+    {
+        switch (modifier)
+        {
+            case Adjusted { Factor: "Twice" }:
+                return amount * 2;
+            case Adjusted { Adjustment: Fixed by } adjusted:
+                return amount + (adjusted.Minus ? -1 : 1) * by.Value;
+            case Scaled { Factor: "Twice" }:
+                return amount * 2;
+            case Scaled { Factor: "Half" } half:
+                return half.Rounding == "Up" ? (amount + 1) / 2 : amount / 2;
+            case Arithmetic arithmetic:
+            {
+                int? by;
+                try { by = Quantities.Evaluate(arithmetic.Right, ctx); }
+                catch (NotSupportedException) { return null; }
+                return by is null ? null : amount + (arithmetic.Operator == "Minus" ? -by.Value : by.Value);
+            }
+            case Fixed fixedValue:
+                return fixedValue.Value;
+            default:
+                return null;
+        }
+    }
+
+    /// <summary>Whether <paramref name="amount"/> satisfies a "4 or more damage" threshold on the damage that would be dealt.</summary>
+    static bool MeetsThreshold(Bound threshold, int amount) =>
+        threshold is null || threshold.Comparison switch
+        {
+            Comparison.Greater => amount > ((Fixed)threshold.Value).Value,
+            Comparison.GreaterOrEqual => amount >= ((Fixed)threshold.Value).Value,
+            Comparison.Less => amount < ((Fixed)threshold.Value).Value,
+            Comparison.LessOrEqual => amount <= ((Fixed)threshold.Value).Value,
+            _ => amount == ((Fixed)threshold.Value).Value,
+        };
 
     /// <summary>The damage <paramref name="source"/> would deal to <paramref name="target"/> after the modifiers on permanents and emblems: doubled, or more or less by a number.</summary>
     int Modify(ObjectId? source, TargetRef target, int amount, bool combat)
@@ -79,7 +133,9 @@ public sealed partial class Game
                     continue;
                 if (!DamageSide(modifier.From, source is { } dealer ? TargetRef.Of(dealer) : null, holder) || !DamageSide(modifier.To, target, holder))
                     continue;
-                amount = modifier.Amount.Factor == "Twice" ? amount * 2 : amount + (modifier.Amount.Minus ? -1 : 1) * ((Fixed)modifier.Amount.Adjustment).Value;
+                if (!MeetsThreshold(modifier.Threshold, amount))
+                    continue;
+                amount = ApplyModifier(modifier.Amount, amount, ctx) ?? amount;
             }
         return Math.Max(0, amount);
     }
@@ -121,6 +177,9 @@ public sealed partial class Game
     public static (Selector From, Selector To, bool CombatOnly, Effect Then, int? Amount)? DamageReplacement(Replacement replacement)
     {
         if (replacement.Would is not WouldHappen { What: DealDamage dealt } would)
+            return null;
+        // "If a source would deal 3 or less damage to this creature, prevent that damage": shields have no threshold yet.
+        if (dealt.Portions?.Any(x => x.Amount is not null) == true)
             return null;
         PreventDamage prevent = null;
         Effect then = null;

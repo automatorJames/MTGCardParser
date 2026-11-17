@@ -29,7 +29,8 @@ public sealed partial class Lowerer
         Rule<G.ShuffleZoneIntoLibrary>((g, ctx) =>
         {
             var owner = PlayerOf(g.Whose);
-            var zones = Terms(g.Zones, ctx).Select(zone => (Selector)new ObjectSelector(Quantifier.All, new ObjectFilter(Kinds: [Kind("card")], Zone: new ZoneRef(zone, owner)))).ToList();
+            // The zone words lower to ZoneRefs, not vocabulary terms ("their hand and graveyard" is two zones).
+            var zones = LowerAll(g.Zones, ctx).OfType<ZoneRef>().Select(zone => (Selector)new ObjectSelector(Quantifier.All, new ObjectFilter(Kinds: [Kind("card")], Zone: new ZoneRef(zone.Zone, owner)))).ToList();
             return new ShuffleInto(zones.Count == 1 ? zones[0] : new Union(zones, Connective.And), Lower(g.Library, ctx) as ZoneRef ?? new ZoneRef("Library", owner));
         });
         Rule<G.CopyIsDescribed>((g, ctx) =>

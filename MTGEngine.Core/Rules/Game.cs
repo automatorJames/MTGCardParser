@@ -1464,9 +1464,22 @@ public sealed partial class Game
         Emit(new LibraryShuffled(player, order));
     }
 
+    /// <summary>Whether <paramref name="player"/> can't gain life: "players can't gain life" on a permanent, or a one-shot ban that hasn't run out.</summary>
+    public bool CantGainLife(PlayerId player)
+    {
+        if (State.LifeGainBanList.Any(x => x.Players.Contains(player)))
+            return true;
+        foreach (var (effect, source) in Characteristics.ActiveStatics(State))
+            if (effect is CantGainLife { Duration: null, RestOfGame: false } ban && Resolver.Players(State, ban.Player, source.Controller, source.Id).Contains(player))
+                return true;
+        return false;
+    }
+
     public void ChangeLife(PlayerId player, int delta, string reason)
     {
         if (delta == 0 || State.Player(player).Lost)
+            return;
+        if (delta > 0 && CantGainLife(player))
             return;
         Emit(new LifeChanged(player, delta, reason));
     }

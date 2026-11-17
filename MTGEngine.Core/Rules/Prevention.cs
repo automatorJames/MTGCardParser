@@ -95,8 +95,37 @@ public sealed partial class Game
     }
 
     /// <summary>The damage left after prevention shields and static prevention abilities: what would be dealt by <paramref name="source"/> to <paramref name="target"/>.</summary>
+    /// <summary>
+    /// Whether damage from <paramref name="source"/> can't be prevented: by an effect this turn ("damage can't be prevented
+    /// this turn"), or because the source is a spell whose text says its damage can't be ("the damage can't be prevented").
+    /// </summary>
+    bool IsUnpreventable(ObjectId? source, bool combat)
+    {
+        var dealer = source is { } id ? State.Object(id) : null;
+        if (dealer is not null && dealer.Card.Abilities.Any(x => CardDefinition.Unwrap(x) is SpellAbility { Effect: DamageCantBePrevented { Source: null, Duration: null, Which: null or "The" } }
+            || CardDefinition.Unwrap(x) is EffectLine { Effect: DamageCantBePrevented { Source: null, Duration: null, Which: null or "The" } }))
+            return true;
+        foreach (var entry in State.UnpreventableList)
+        {
+            if (entry.CombatOnly && !combat)
+                continue;
+            switch (entry.Source)
+            {
+                case null:
+                    return true;
+                case Self when entry.Holder is { } holder && source == holder:
+                    return true;
+                case ObjectSelector objects when dealer is not null && Filters.Matches(State, objects.Filter ?? new ObjectFilter(), dealer, entry.Controller, entry.Holder, objects.Other ? entry.Holder : null):
+                    return true;
+            }
+        }
+        return false;
+    }
+
     int Prevent(ObjectId? source, TargetRef target, int amount, bool combat)
     {
+        if (IsUnpreventable(source, combat))
+            return amount;
         // Protection: damage from what a permanent has protection from is prevented.
         if (target.IsObject && State.Object(target.Object.Value) is { } victim && source is { } from && State.Object(from) is { } dealer
             && Keywords.ProtectedFrom(State, victim, Characteristics.Of(State, victim), dealer))

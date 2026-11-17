@@ -565,6 +565,22 @@ public static class Interpreter
                 return ctx with { Affected = [TargetRef.Of(first.Id), TargetRef.Of(second.Id)] };
             }
 
+            case CantGainLife cantGain when cantGain.Duration is not null || cantGain.RestOfGame:
+            {
+                var banned = Resolver.Players(cantGain.Player, ctx);
+                var until = cantGain.RestOfGame ? null : UntilTurn(cantGain.Duration, game.State, ctx.Controller);
+                game.Emit(new LifeGainBanned(new LifeGainBan(banned, until is null or -1 ? null : until)));
+                return ctx;
+            }
+            case DamageCantBePrevented cantPrevent:
+            {
+                // "The damage can't be prevented" on a spell is read where the spell's damage is dealt (Game.IsUnpreventable).
+                if (cantPrevent is { Source: null, Duration: null, Which: null or "The" })
+                    return ctx;
+                var until = UntilTurn(cantPrevent.Duration, game.State, ctx.Controller);
+                game.Emit(new UnpreventableDamageCreated(new UnpreventableDamage(cantPrevent.Source, ctx.Source, ctx.Controller, cantPrevent.Which == "Combat", until is null or -1 ? null : until)));
+                return ctx;
+            }
             // "Target creature phases out", "… phases out until this enchantment leaves the battlefield".
             case Phasing phasing when phasing.Duration is null or UntilThisLeaves:
             {

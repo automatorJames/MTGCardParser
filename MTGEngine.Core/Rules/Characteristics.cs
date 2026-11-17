@@ -439,6 +439,7 @@ public sealed record Characteristics(
             AssignsDamageByToughness { Duration: null } => [effect],
             AssignsDamageAsThoughUnblocked { Duration: null } => [effect],
             GainAbilitiesOf { Duration: null } => [effect],
+            CantGainLife { Duration: null, RestOfGame: false } => [effect],
             Sequence sequence => sequence.Steps.SelectMany(Continuous),
             _ => [],
         };
@@ -460,6 +461,8 @@ public sealed record Characteristics(
             Animate animate => animate.Objects ?? new Self(),
             // Prevention is read by the damage rules (Game.Prevent), not applied to an object's characteristics.
             PreventDamage => new Self(),
+            // "Players can't gain life" is read by the life rules (Game.ChangeLife).
+            CantGainLife => new Self(),
             // So are permissions to play from elsewhere (Game.StaticPermitted).
             MayPlayFrom => new Self(),
             // And control (Game.UpdateControl).

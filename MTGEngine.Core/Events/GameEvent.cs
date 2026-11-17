@@ -87,6 +87,8 @@ public sealed record EnergyChanged(PlayerId Player, int Delta) : GameEvent;
 public sealed record LinkedExileCreated(LinkedExile Link) : GameEvent;
 public sealed record LinkedExileEnded(ObjectId Source) : GameEvent;
 public sealed record ZoneReplacementCreated(ZoneReplacement Replacement) : GameEvent;
+public sealed record UnpreventableDamageCreated(UnpreventableDamage Entry) : GameEvent;
+public sealed record LifeGainBanned(LifeGainBan Ban) : GameEvent;
 public sealed record PermissionGranted(PlayPermission Permission) : GameEvent;
 public sealed record ShieldCreated(PreventionShield Shield) : GameEvent;
 public sealed record ShieldUsed(int Id, int Amount) : GameEvent;
@@ -381,6 +383,8 @@ public static class Reducer
                     Permissions = state.PermissionList.RemoveAll(x => x.ExpiresAfterTurn is { } after && after <= expired.Turn),
                     ZoneReplacements = state.ZoneReplacementList.RemoveAll(x => x.ExpiresAfterTurn is { } after && after <= expired.Turn),
                     PlayRestrictions = state.PlayRestrictionList.RemoveAll(x => x.ExpiresAfterTurn is { } after && after <= expired.Turn),
+                    Unpreventable = state.UnpreventableList.RemoveAll(x => x.ExpiresAfterTurn is { } after && after <= expired.Turn),
+                    LifeGainBans = state.LifeGainBanList.RemoveAll(x => x.ExpiresAfterTurn is { } after && after <= expired.Turn),
                     // Control effects that run out end at the next check, which gives the permanent back.
                     ControlEffects = state.ControlEffects?.Select(x => x.ExpiresAfterTurn is { } after && after <= expired.Turn ? x with { Expired = true } : x).ToImmutableList(),
                 };
@@ -416,6 +420,12 @@ public static class Reducer
 
             case LinkedExileEnded ended:
                 return state with { LinkedExiles = state.LinkedExileList.RemoveAll(x => x.Source == ended.Source) };
+
+            case LifeGainBanned banned:
+                return state with { LifeGainBans = state.LifeGainBanList.Add(banned.Ban) };
+
+            case UnpreventableDamageCreated unpreventable:
+                return state with { Unpreventable = state.UnpreventableList.Add(unpreventable.Entry) };
 
             case ZoneReplacementCreated replacement:
                 return state with { ZoneReplacements = state.ZoneReplacementList.Add(replacement.Replacement) };

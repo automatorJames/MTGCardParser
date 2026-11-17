@@ -79,6 +79,16 @@ public sealed record TemporaryEffect(ObjectId Target, int Power, int Toughness, 
 /// <summary>"Target player can't cast instant or sorcery spells this turn", "you can't play lands": who, what, judged from whose side, and until when.</summary>
 public sealed record PlayRestriction(PlayerId Player, string Verb, Selector What, ObjectId? Source, PlayerId Controller, int? ExpiresAfterTurn, bool OrActivate = false, Quantity MoreThan = null);
 
+/// <summary>
+/// Damage that can't be prevented: "damage can't be prevented this turn", "damage dealt by this creature can't be
+/// prevented", "combat damage dealt by creatures can't be prevented this turn". A null source means any source;
+/// <see cref="Self"/> means the holder.
+/// </summary>
+public sealed record UnpreventableDamage(Selector Source, ObjectId? Holder, PlayerId Controller, bool CombatOnly, int? ExpiresAfterTurn);
+
+/// <summary>Players who can't gain life, from a one-shot effect: "players can't gain life this turn", "that player can't gain life for the rest of the game".</summary>
+public sealed record LifeGainBan(ImmutableList<PlayerId> Players, int? ExpiresAfterTurn);
+
 /// <summary>A card a permanent exiled, for "cards exiled with this artifact".</summary>
 /// <summary>On turn <see cref="Turn"/>, <see cref="Blocker"/> blocks <see cref="Attacker"/> if able; with no blocker, something blocks it if able.</summary>
 public sealed record BlockRequirement(ObjectId? Blocker, ObjectId Attacker, int Turn);
@@ -178,7 +188,9 @@ public sealed record GameState(
     ImmutableList<(PlayerId Player, Step Step)> SkipNext = null,
     ImmutableList<ControlEffect> ControlEffects = null,
     ImmutableDictionary<ObjectId, GameObject> LastKnown = null,
-    ImmutableList<BlockRequirement> BlockRequirements = null)
+    ImmutableList<BlockRequirement> BlockRequirements = null,
+    ImmutableList<UnpreventableDamage> Unpreventable = null,
+    ImmutableList<LifeGainBan> LifeGainBans = null)
 {
     /// <summary>Blocks required this turn: "target creature blocks this creature this turn if able", "must be blocked this turn if able".</summary>
     public ImmutableList<BlockRequirement> BlockRequirementList => (BlockRequirements ?? ImmutableList<BlockRequirement>.Empty).Where(x => x.Turn == Turn).ToImmutableList();
@@ -197,6 +209,8 @@ public sealed record GameState(
 
     public ImmutableList<ExileLink> ExileLinkList => ExileLinks ?? ImmutableList<ExileLink>.Empty;
     public ImmutableList<PlayRestriction> PlayRestrictionList => PlayRestrictions ?? ImmutableList<PlayRestriction>.Empty;
+    public ImmutableList<UnpreventableDamage> UnpreventableList => Unpreventable ?? ImmutableList<UnpreventableDamage>.Empty;
+    public ImmutableList<LifeGainBan> LifeGainBanList => LifeGainBans ?? ImmutableList<LifeGainBan>.Empty;
 
     public ImmutableList<LinkedExile> LinkedExileList => LinkedExiles ?? ImmutableList<LinkedExile>.Empty;
 
