@@ -814,6 +814,37 @@ public sealed partial class Game
                 var amount = ManaCost.Parse(string.Concat(modification.Amount?.Symbols ?? [])).Generic * times;
                 reduction += modification.Change == "Less" ? amount : -amount;
             }
+
+        // "Activated abilities of creatures you control cost {2} less to activate", "activated abilities of creature cards
+        // in your graveyard cost {1} less": statics on the battlefield about the abilities of what their filter names.
+        foreach (var holder in State.Battlefield.ToList())
+        {
+            var traits = Characteristics.Of(State, holder);
+            if (traits.LostAbilities)
+                continue;
+            foreach (var ability in traits.Abilities.OfType<StaticAbility>())
+                foreach (var (modification, condition, variable) in CostModifications(ability))
+                {
+                    if (modification.Action != "Activate" || modification.Spells is not ObjectSelector { Filter: { } filter })
+                        continue;
+                    if (filter.Kinds?.Any(x => x.Value == nameof(ObjectKind.Ability)) != true || filter.With is not [Related { Relation: Relation.AbilityOf } of])
+                        continue;
+                    // Only "activated" and "that aren't mana abilities" are read as qualifiers on the abilities themselves.
+                    if (filter.Qualifiers?.Any(q => !(q.Vocabulary == "AbilityCategory" && q.Quality == "Activated" && !q.Negated) && !(q.Vocabulary == "AbilityKindWord" && q.Quality == "Mana" && q.Negated)) == true)
+                        continue;
+                    var ctx = new EffectContext(this, holder.Controller, holder.Id, new Dictionary<IrNode, ImmutableList<TargetRef>>(ReferenceEqualityComparer.Instance));
+                    var belongs = of.To is Self ? source.Id == holder.Id : Resolver.Objects(of.To, ctx).Contains(source.Id);
+                    if (!belongs)
+                        continue;
+                    if (variable is { } let && Quantities.Evaluate(let.Definition, ctx) is { } value)
+                        ctx = ctx with { X = value };
+                    if (condition is not null && Conditions.Evaluate(condition, ctx) != true || modification.Condition is not null && Conditions.Evaluate(modification.Condition, ctx) != true)
+                        continue;
+                    var times = modification.PerEach is null ? 1 : Quantities.Evaluate(modification.PerEach, ctx) ?? 0;
+                    var amount = ManaCost.Parse(string.Concat(modification.Amount?.Symbols ?? [])).Generic * times;
+                    reduction += modification.Change == "Less" ? amount : -amount;
+                }
+        }
         return cost.AdjustGeneric(-reduction);
     }
 

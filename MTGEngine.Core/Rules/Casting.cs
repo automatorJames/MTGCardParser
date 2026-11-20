@@ -298,12 +298,18 @@ public sealed partial class Game
             foreach (var ability in traits.Abilities.OfType<StaticAbility>())
                 foreach (var (modification, condition, _) in CostModifications(ability))
                 {
-                    if (modification.Spells is not ObjectSelector selector)
+                    var selectors = modification.Spells switch
+                    {
+                        ObjectSelector one => [one],
+                        Union union => union.Members.OfType<ObjectSelector>().ToList(),
+                        _ => new List<ObjectSelector>(),
+                    };
+                    if (selectors.Count == 0)
                         continue;
                     var ctx = new EffectContext(this, source.Controller, source.Id, new Dictionary<IrNode, ImmutableList<TargetRef>>(ReferenceEqualityComparer.Instance));
                     if (condition is not null && Conditions.Evaluate(condition, ctx) != true)
                         continue;
-                    if (!Filters.Matches(state, selector.Filter, asSpell, source.Controller, source.Id, selector.Other ? source.Id : null, ctx: ctx))
+                    if (!selectors.Any(selector => Filters.Matches(state, selector.Filter, asSpell, source.Controller, source.Id, selector.Other ? source.Id : null, ctx: ctx)))
                         continue;
                     Apply(modification, ctx);
                 }

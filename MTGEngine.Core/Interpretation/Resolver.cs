@@ -198,6 +198,14 @@ public static class Resolver
             var named = Objects(among.To, ctx);
             return named.Count > 0 ? named : (ctx.Affected ?? ctx.Last ?? []).Where(x => x.IsObject).Select(x => x.Object.Value).ToImmutableList();
         }
+        // "You may cast a spell from among them": what the step before looked at, revealed or exiled; "from among cards exiled with this".
+        if (filter.Qualifiers?.FirstOrDefault(q => q.Vocabulary == "FromAmongCards") is { } fromAmong)
+        {
+            var state = ctx.State;
+            return fromAmong.Quality == "AmongExiledWithThis"
+                ? state.ExileLinkList.Where(x => x.Source == ctx.Source && state.Object(x.Card) is { Zone: Zone.Exile } card && card.ZoneChangeCount == x.CardZoneChanges).Select(x => x.Card).ToImmutableList()
+                : (ctx.Affected ?? ctx.Last ?? []).Where(x => x.IsObject).Select(x => x.Object.Value).ToImmutableList();
+        }
         return null;
     }
 
@@ -208,9 +216,16 @@ public static class Resolver
         {
             Zone = null,
             Kinds = filter.Kinds?.Any(k => k.Vocabulary is "RetargetedObject" or "CopiedSpell") == true ? null : filter.Kinds,
-            Qualifiers = filter.Qualifiers?.Where(q => q.Vocabulary is not ("LeftoverCards" or "AffectedThisWay" or "DamageHistory" or "ThisWayAction" or "Position")).ToList(),
+            Qualifiers = filter.Qualifiers?.Where(q => q.Vocabulary is not ("LeftoverCards" or "AffectedThisWay" or "DamageHistory" or "ThisWayAction" or "Position" or "FromAmongCards")).ToList(),
             With = filter.With?.Where(p => p is not Related { Relation: Relation.Among }).ToList(),
         };
+        // "Cast a spell from among them": a card in the pool that isn't on the stack yet is "a spell" when it could be cast, so not a land.
+        if (obj.Zone != Zone.Stack && rest.Kinds?.Any(x => x.Value == nameof(ObjectKind.Spell)) == true)
+        {
+            if (obj.Card.IsLand)
+                return false;
+            rest = rest with { Kinds = rest.Kinds.Select(x => x.Value == nameof(ObjectKind.Spell) ? x with { Value = nameof(ObjectKind.Card) } : x).ToList() };
+        }
         var namesCards = rest.Kinds?.Any(x => x.Value is nameof(ObjectKind.Card) or nameof(ObjectKind.Spell)) == true;
         return Filters.Matches(ctx.State, rest, namesCards || obj.Zone == Zone.Battlefield ? obj : obj with { Zone = Zone.Battlefield }, ctx.Controller, ctx.Source, ctx: ctx);
     }

@@ -182,7 +182,7 @@ public static class InterpreterSupport
     [
         "CardType", "CreatureType", "LandType", "PermanentSubtype", "PlaneswalkerType", "ArtifactType", "EnchantmentType", "Supertype", "ManaColor",
         "ColorCount", "Colorfulness", "TapState", "CombatState", nameof(ObjectKind), "Distinction", "Keyword", "AttachedBy", "Kind", "Position", "Provenance", "TokenWord", "CounterKind", "CardGroup", "CountSuffix", "Manner", "AbilitiesWord",
-        "LeftoverCards", "AffectedThisWay", "DamageHistory", "ThisWayAction", "CastFrom", "SpellOrdinal", "SpellCountPeriod", "AbilityCategory",
+        "LeftoverCards", "AffectedThisWay", "DamageHistory", "ThisWayAction", "CastFrom", "SpellOrdinal", "SpellCountPeriod", "AbilityCategory", "FromAmongCards",
     ];
 
     static readonly HashSet<string> _kindVocabularies =
@@ -350,7 +350,7 @@ public static class InterpreterSupport
             Controlled { Relation: not ("Control" or "Own") } controlled => $"Controlled.{controlled.Relation}",
             ZoneRef zone when !Enum.TryParse<Zone>(zone.Zone, out _) => $"ZoneRef.{zone.Zone}",
             ZoneRef { Position: not (null or "Top" or "Bottom" or "TopOrBottom") } zone => $"ZoneRef.Position.{zone.Position}",
-            PutCounters { Counters.Kind: null } => "PutCounters.Kind",
+            PutCounters { Counters.Kind: null, Counters.Count: not (null or Special { Kind: "All" }) } => "PutCounters.Kind",
             ManaChoice { Choice: not ("AnyColor" or "AnyOneColor" or "AnyCombination" or "TheChosenColor" or "AnyTypeProduced") } choice => $"ManaChoice.{choice.Choice}",
             Destroy { Manner: not (null or "CantBeRegenerated") } destroy => $"Destroy.{destroy.Manner}",
             Exile { Until: not (null or UntilThisLeaves) } => "Exile.Until",
@@ -439,7 +439,8 @@ public static class InterpreterSupport
             RedirectDamage { Duration: { } redirectFor } when !Keeps(redirectFor) => $"RedirectDamage.Duration[{Describe(redirectFor)}]",
             PreventDamage { Duration: { } duration } when !Keeps(duration) => $"PreventDamage.Duration[{Describe(duration)}]",
             CostModification { Action: "Activate", Spells: SelfAbility } => null,
-            CostModification { Action: not (null or "Cast") } modification => $"CostModification.{modification.Action}",
+            CostModification { Action: not (null or "Cast" or "Activate") } modification => $"CostModification.{modification.Action}",
+            CostModification { Action: "Activate" } activate when activate.Spells is not (SelfAbility or ObjectSelector { Filter.With: [Related { Relation: Relation.AbilityOf }] }) => "CostModification.Activate",
             WasCastWith { Twice: true } => "WasCastWith.Twice",
             WasCastWith cast when cast.How is not ("Kicked" or "AdditionalCost") => $"WasCastWith.{cast.How}",
             Targets { Spell: not (Self or Reference { Text: "it" }) } => "Targets.Spell",
@@ -499,7 +500,8 @@ public static class InterpreterSupport
             CantGainLife { Duration: null, RestOfGame: false } => true,
             MayPlayFrom from => Game.PlayFromHandled(from),
             Replacement replacement => Game.DamageModifier(replacement) is not null || Game.DamageReplacement(replacement) is not null,
-            CostModification { Spells: Self or ObjectSelector } => true,
+            CostModification { Spells: Self or ObjectSelector or Union, Action: null or "Cast" } => true,
+            CostModification { Spells: ObjectSelector { Filter.With: [Related { Relation: Relation.AbilityOf }] }, Action: "Activate" } => true,
             CostModification { Spells: SelfAbility, Action: "Activate" } => true,
             ManaRestriction => true,
             GainControl { Duration: null } => true,

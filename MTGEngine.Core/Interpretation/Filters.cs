@@ -42,6 +42,18 @@ public static class Filters
                 if (!traits.Types.Contains("Instant") && !traits.Types.Contains("Sorcery"))
                     return false;
             }
+            // "Cast a spell from among them": one of the cards the previous step left; "from among cards exiled with this".
+            else if (qualifier.Vocabulary == "FromAmongCards")
+            {
+                var among = qualifier.Quality switch
+                {
+                    "AmongThem" => ctx?.Last?.Any(x => x.IsObject && x.Object == obj.Id) == true,
+                    "AmongExiledWithThis" => obj.Zone == Zone.Exile && state.ExileLinkList.Any(x => x.Source == source && x.Card == obj.Id && x.CardZoneChanges == obj.ZoneChangeCount),
+                    _ => false,
+                };
+                if (among == qualifier.Negated)
+                    return false;
+            }
             else if (!QualifierMatches(qualifier, obj, traits, source, state))
                 return false;
 

@@ -373,6 +373,18 @@ public static class Interpreter
             {
                 var count = Quantities.Evaluate(put.Counters.Count, ctx) ?? 1;
                 var kind = put.Counters.Kind;
+                if (kind is null && put.Counters.Count is null or Special { Kind: "All" } && (ctx.TriggerSubject is { IsObject: true } ? ctx.TriggerSubject.Value.Object : ctx.Source) is { } had)
+                {
+                    // "Put its counters on target creature", "put those counters on {this}": each kind the creature that left (the
+                    // trigger's subject, else the source) has, or had as it left, by last known information.
+                    var holder = state.Object(had) is { Zone: Zone.Battlefield } live ? live : state.LastKnownOf(had) ?? state.Object(had);
+                    var counters = holder?.CounterMap.Where(x => x.Key is not ("regeneration-shield" or "deathtouch-damage" or "monstrous" or "echo-paid") && x.Value > 0).ToList() ?? [];
+                    var receivers = put.Objects is null ? [] : Resolver.ForEffect(put.Objects, ctx);
+                    foreach (var id in receivers)
+                        foreach (var (each, have) in counters)
+                            game.Emit(new CountersChanged(id, each, have));
+                    return ctx with { Last = receivers.Select(TargetRef.Of).ToImmutableList() };
+                }
                 if (kind is null)
                     return Skipped(game, put, "counter kind unknown", ctx);
                 // "Defending player gets a poison counter": a player's counters.
