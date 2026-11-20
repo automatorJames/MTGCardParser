@@ -28,6 +28,9 @@ public sealed partial class Game
     const int PrototypeCast = -23;
     const int MiracleCast = -24;
 
+    /// <summary>The alternative index that marks casting a card from the graveyard transformed for its disturb cost.</summary>
+    public const int DisturbCast = -25;
+
     /// <summary>Keyword costs paid instead of the mana cost that aren't offered from the hand at the usual times (see <see cref="KeywordCast"/>).</summary>
     static readonly (string Keyword, int Index, string Option)[] _otherZoneCasts = [("Escape", EscapeCast, "Escaped"), ("Sneak", SneakCast, "Sneak"), ("Miracle", MiracleCast, "Miracle")];
 

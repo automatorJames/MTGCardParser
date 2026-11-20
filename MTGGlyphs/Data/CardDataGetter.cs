@@ -45,9 +45,76 @@ public class CardDataGetter : IDocumentRepository
     async Task<List<IDocument>> QueryAsync(string volumeCondition, object parameters)
     {
         using var conn = new SqlConnection(_sqlConnString);
-        var result = await conn.QueryAsync<Card>("select * from Card" + Where(volumeCondition), parameters);
+        var result = (await conn.QueryAsync<Card>("select * from Card" + Where(volumeCondition), parameters)).ToList();
+        AttachBackFaces(conn, result);
 
         return result.Cast<IDocument>().ToList();
+    }
+
+    /// <summary>
+    /// A two-faced card's back face, from the printings table (<c>CardAll</c>, every printing of every face under the
+    /// card's full "Front // Back" name): the face whose characteristics aren't the front's, with the text of its most
+    /// recent printing. Cards whose faces can't be told apart that way (both faces alike, or more than two) get none.
+    /// </summary>
+    static void AttachBackFaces(SqlConnection conn, List<Card> cards)
+    {
+        var twoFaced = cards.Where(x => x.Name?.Contains(" // ") == true).ToList();
+        if (twoFaced.Count == 0)
+            return;
+        var printings = conn.Query<Printing>("select Name, Text, ManaCost, Types, Supertypes, Subtypes, Keywords, Power, Toughness, Loyalty, Colors, MultiverseId from CardAll where Name like '% // %'")
+            .ToLookup(x => x.Name);
+
+        foreach (var card in twoFaced)
+        {
+            var names = card.Name.Split(" // ");
+            if (names.Length != 2 || names[0] == names[1])
+                continue;
+            var front = Printing.KeyOf(card.ManaCost, card.Types, card.Supertypes, card.Subtypes, card.Power, card.Toughness, card.Loyalty);
+            var others = printings[card.Name].Where(x => x.Key != front).GroupBy(x => x.Key).ToList();
+            if (others.Count != 1)
+                continue;
+            // The newest printing, and among imports of one printing the fuller keyword list (the later import) and the shorter text (today's wording).
+            var back = others[0].OrderByDescending(x => x.MultiverseId ?? -1).ThenByDescending(x => x.Keywords?.Length ?? 0).ThenBy(x => x.Text?.Length ?? 0).First();
+            card.BackFace = new Card
+            {
+                CardId = card.CardId,
+                Name = names[1],
+                Text = back.Text,
+                ManaCost = back.ManaCost,
+                Types = back.Types,
+                Supertypes = back.Supertypes,
+                Subtypes = back.Subtypes,
+                Keywords = back.Keywords,
+                Power = back.Power,
+                Toughness = back.Toughness,
+                Loyalty = back.Loyalty,
+                Colors = back.Colors,
+                SetCode = card.SetCode,
+                SetSequence = card.SetSequence,
+            };
+        }
+    }
+
+    /// <summary>One printing of one face, as the printings table has it.</summary>
+    class Printing
+    {
+        public string Name { get; set; }
+        public string Text { get; set; }
+        public string ManaCost { get; set; }
+        public string Types { get; set; }
+        public string Supertypes { get; set; }
+        public string Subtypes { get; set; }
+        public string Keywords { get; set; }
+        public string Power { get; set; }
+        public string Toughness { get; set; }
+        public string Loyalty { get; set; }
+        public string Colors { get; set; }
+        public int? MultiverseId { get; set; }
+
+        /// <summary>The characteristics that tell one face from the other.</summary>
+        public string Key => KeyOf(ManaCost, Types, Supertypes, Subtypes, Power, Toughness, Loyalty);
+
+        public static string KeyOf(params string[] parts) => string.Join("|", parts.Select(x => x ?? ""));
     }
 
     int[] ReadVolumes()

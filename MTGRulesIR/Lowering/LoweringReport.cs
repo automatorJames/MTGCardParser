@@ -35,7 +35,8 @@ public sealed class LoweringReport
         if (card.EngineClosed)
             CardsEngineClosed++;
 
-        foreach (var line in card.Lines)
+        foreach (var face in card.Faces)
+        foreach (var line in face.Lines)
         {
             Lines++;
             Abilities += line.Abilities.Count;
@@ -49,7 +50,7 @@ public sealed class LoweringReport
                 continue;
             }
 
-            var lineKey = $"{card.Name}/{line.Line}";
+            var lineKey = $"{face.Name}/{line.Line}";
 
             foreach (var opaque in line.Abilities.SelectMany(OpaqueNodes.In))
                 Count(_blockers, opaque.Glyph, lineKey, opaque.Text);

@@ -379,6 +379,8 @@ public static class Triggers
                     Subject(trigger, put.Object, source, after, before),
                 "IsTurnedFaceUp" when evt is TurnedFace { FaceDown: false } turnedUp =>
                     Subject(trigger, turnedUp.Object, source, after, before),
+                "Transforms" or "EntersOrTransforms" or "TransformsInto" when evt is Transformed transformed =>
+                    Subject(trigger, transformed.Object, source, after, before),
                 "IsTappedForMana" when evt is TappedForMana tappedForMana =>
                     Subject(trigger, tappedForMana.Object, source, after, before) is { Fires: true } forMana ? forMana with { Subject = TargetRef.Of(tappedForMana.Player), Bound = tappedForMana.Object } : null,
                 "BecomesTarget" when TargetsOf(evt) is { Count: > 0 } targeted && TargetedBy(trigger, ItemOf(evt), source, after) =>

@@ -78,6 +78,10 @@ public sealed record SpellCopied(StackItem Item) : GameEvent;
 public sealed record TargetsChanged(int StackId, ImmutableList<TargetRef> Targets, ImmutableList<int> Counts = null) : GameEvent;
 public sealed record BecameCopy(ObjectId Object, CardDefinition Copy, int? UntilTurn) : GameEvent;
 public sealed record TurnedFace(ObjectId Object, bool FaceDown) : GameEvent;
+/// <summary>A two-faced object turned to its other face: a transforming card's back face, a flip card's flipped half, or back to the front.</summary>
+public sealed record Transformed(ObjectId Object) : GameEvent;
+/// <summary>It became day or night (null for neither, as a game starts).</summary>
+public sealed record DayNightChanged(string State) : GameEvent;
 public sealed record StepSkipScheduled(PlayerId Player, Step Step) : GameEvent;
 public sealed record StepSkipped(PlayerId Player, Step Step) : GameEvent;
 public sealed record TappedForMana(ObjectId Object, PlayerId Player) : GameEvent;
@@ -172,11 +176,15 @@ public static class Reducer
                     next = next with { Temporary = next.Temporary.RemoveAll(x => x.Target == obj.Id) };
                 if (moved.From == Zone.Battlefield)
                     next = next with { LastKnown = (next.LastKnown ?? ImmutableDictionary<ObjectId, GameObject>.Empty).SetItem(obj.Id, obj) };
+                // A two-faced card keeps its face from the stack to the battlefield; anywhere else it's front face up.
+                var keepsFace = moved.To is Zone.Battlefield or Zone.Stack;
                 next = next.WithObject(obj with
                 {
                     // A copy is a copy only while it stays where it became one.
-                    Card = obj.OriginalCard ?? obj.Card,
+                    Card = obj.OriginalCard ?? (keepsFace ? obj.Card : obj.FrontFace ?? obj.Card),
                     OriginalCard = null,
+                    Transformed = keepsFace && obj.Transformed,
+                    FrontFace = keepsFace ? obj.FrontFace : null,
                     CopyUntilTurn = null,
                     Zone = moved.To,
                     Controller = moved.Controller,
@@ -396,6 +404,18 @@ public static class Reducer
 
             case TurnedFace turned:
                 return state.Object(turned.Object) is { } turning ? state.WithObject(turning with { FaceDown = turned.FaceDown }) : state;
+
+            case Transformed transformed:
+            {
+                if (state.Object(transformed.Object) is not { } facing)
+                    return state;
+                if (facing.Transformed)
+                    return state.WithObject(facing with { Transformed = false, Card = facing.FrontFace ?? facing.Card, FrontFace = null });
+                return facing.Card.Back is { } back ? state.WithObject(facing with { Transformed = true, FrontFace = facing.Card, Card = back }) : state;
+            }
+
+            case DayNightChanged dayNight:
+                return state with { DayNight = dayNight.State };
 
             case StepSkipScheduled scheduled:
                 return state with { SkipNext = state.SkipList.Add((scheduled.Player, scheduled.Step)) };

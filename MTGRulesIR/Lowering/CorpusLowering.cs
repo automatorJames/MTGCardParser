@@ -48,7 +48,8 @@ public sealed class CorpusLowering
             card.Power,
             card.Toughness,
             card.Loyalty,
-            string.IsNullOrEmpty(card.Keywords) ? null : card.Keywords.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+            string.IsNullOrEmpty(card.Keywords) ? null : card.Keywords.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
+            string.IsNullOrEmpty(card.Colors) ? null : card.Colors);
 
     public LineRules LowerLine(IDocument document, string types, ProcessedLine line) =>
         LowerLineWithOrigins(document, types, line).Rules;

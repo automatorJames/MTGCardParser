@@ -18,7 +18,7 @@ static class Simulate
         var cards = File.ReadLines(rulesPath)
             .Where(x => !string.IsNullOrWhiteSpace(x))
             .Select(IrJson.Deserialize<CardRules>)
-            .Where(card => card.Lines.All(line => line.EngineClosed && !line.Abilities.SelectMany(InterpreterSupport.Unsupported).Any()))
+            .Where(card => card.AllLines.All(line => line.EngineClosed && !line.Abilities.SelectMany(InterpreterSupport.Unsupported).Any()))
             .Select(CardDefinition.From)
             .Where(x => !x.IsLand && x.Types.Count > 0)
             .ToList();

@@ -440,6 +440,9 @@ public static class Conditions
                 });
                 return holds != counters.Negated;
             }
+            case DayNight dayNight:
+                return dayNight.State == "Neither" ? state.DayNight is null : string.Equals(state.DayNight, dayNight.State, StringComparison.OrdinalIgnoreCase);
+
             case IsInZone inZone:
             {
                 var objects = Resolver.Objects(inZone.Object, ctx).Select(state.Object).Where(x => x is not null).ToList();

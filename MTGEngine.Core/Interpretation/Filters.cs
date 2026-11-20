@@ -152,6 +152,7 @@ public static class Filters
             "Equipped" => Attached(x => x.Card.IsEquipment),
             "Enchanted" => Attached(x => x.Card.IsAura),
             "FaceDown" => obj.FaceDown,
+            "Transformed" => obj.Transformed,
             "Saddled" => state is not null && obj.Chosen("SaddledTurn") == state.Turn.ToString(),
             "Monstrous" => obj.CountersOf("monstrous") > 0,
             "Modified" => obj.CounterMap.Keys.Any(k => k is not ("regeneration-shield" or "deathtouch-damage" or "monstrous")) || Attached(x => x.Card.IsEquipment || x.Card.IsAura && x.Controller == obj.Controller),

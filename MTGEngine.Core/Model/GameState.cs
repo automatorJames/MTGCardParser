@@ -21,7 +21,9 @@ public sealed record GameObject(
     ManaPool SpentToCast = null,
     CardDefinition OriginalCard = null,
     int? CopyUntilTurn = null,
-    bool PhasedOut = false)
+    bool PhasedOut = false,
+    bool Transformed = false,
+    CardDefinition FrontFace = null)
 {
     /// <summary>How the object was cast, while it's the spell or the permanent that spell became: "Kicked", "AdditionalCost", an alternative cost's name.</summary>
     public bool WasCastWith(string how) => CastWith?.Contains(how) == true;
@@ -190,7 +192,8 @@ public sealed record GameState(
     ImmutableDictionary<ObjectId, GameObject> LastKnown = null,
     ImmutableList<BlockRequirement> BlockRequirements = null,
     ImmutableList<UnpreventableDamage> Unpreventable = null,
-    ImmutableList<LifeGainBan> LifeGainBans = null)
+    ImmutableList<LifeGainBan> LifeGainBans = null,
+    string DayNight = null)
 {
     /// <summary>Blocks required this turn: "target creature blocks this creature this turn if able", "must be blocked this turn if able".</summary>
     public ImmutableList<BlockRequirement> BlockRequirementList => (BlockRequirements ?? ImmutableList<BlockRequirement>.Empty).Where(x => x.Turn == Turn).ToImmutableList();

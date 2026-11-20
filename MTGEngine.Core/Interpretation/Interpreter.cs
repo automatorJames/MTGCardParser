@@ -754,6 +754,9 @@ public static class Interpreter
                     // "On their choice of the top or bottom of their library": the owner chooses.
                     var at = change.To.Position == "TopOrBottom" ? (game.Decide(new YesNo(obj.Owner, $"Put {obj.Card.Name} on top of your library?")).Yes ? 0 : int.MaxValue) : position;
                     game.MoveToZone(id, zone, controller ?? (zone == Zone.Battlefield ? ctx.Controller : null), change.Tapped, at);
+                    // "Return it to the battlefield transformed."
+                    if (zone == Zone.Battlefield && change.States?.Contains("Transformed") == true)
+                        game.Transform(id, toBack: true);
                 }
                 var moved = objects.Select(TargetRef.Of).ToImmutableList();
                 return ctx with { Affected = moved, Last = moved };
@@ -1152,6 +1155,20 @@ public static class Interpreter
                 if (ctx.Source is { } classCard && state.Object(classCard) is { } leveled && leveled.CountersOf("class-level") < gain.Level - 1)
                     game.Emit(new CountersChanged(classCard, "class-level", gain.Level - 1 - leveled.CountersOf("class-level")));
                 return ctx;
+
+            case Transform transform:
+            {
+                var objects = transform.Objects is null ? (ctx.Source is { } s ? [s] : []) : Resolver.ForEffect(transform.Objects, ctx);
+                foreach (var id in objects)
+                    game.Transform(id);
+                return ctx with { Last = objects.Select(TargetRef.Of).ToImmutableList() };
+            }
+
+            case SetDayNight dayNight:
+            {
+                game.SetDayNight(dayNight.State);
+                return ctx;
+            }
 
             case TurnFace turn:
             {

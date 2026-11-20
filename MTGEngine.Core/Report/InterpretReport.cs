@@ -26,14 +26,15 @@ public sealed class InterpretReport
         var cardBlockers = new HashSet<string>();
         List<string> listed = [];
 
-        foreach (var line in card.Lines)
+        foreach (var face in card.Faces)
+        foreach (var line in face.Lines)
         {
             _lines++;
             if (line.EngineClosed)
                 _linesClosed++;
 
             // The engine drops a handled or casting keyword's reminder text, so its lowering doesn't need running.
-            var unsupported = CardDefinition.WithoutCastingReminders(line).SelectMany(InterpreterSupport.Unsupported).Concat(InterpreterSupport.OnPermanent(card, line)).Concat(InterpreterSupport.PoolRestrictions(line)).Distinct().ToList();
+            var unsupported = CardDefinition.WithoutCastingReminders(line).SelectMany(InterpreterSupport.Unsupported).Concat(InterpreterSupport.OnPermanent(face, line)).Concat(InterpreterSupport.PoolRestrictions(line)).Distinct().ToList();
             if (line.EngineClosed && unsupported.Count == 0)
             {
                 _linesExecutable++;
@@ -53,6 +54,17 @@ public sealed class InterpretReport
             }
         }
 
+        // A card that transforms or flips needs its other face; a card whose back face is cast or played on its own
+        // (a modal double-faced card, a split card's other half, an adventure) needs that face played, which the engine doesn't do.
+        var faces = card.Back is null && NeedsBackFace(card) ? "Face.Missing" : card.Back is { } back && (back.Info?.ManaCost is not null || back.Types?.Contains("Land") == true) ? "Face.Castable" : null;
+        if (faces is not null)
+        {
+            allExecutable = false;
+            cardBlockers.Add(faces);
+            var (count, example) = _blockers.GetValueOrDefault(faces);
+            _blockers[faces] = (count + 1, example ?? card.Name);
+        }
+
         if (allExecutable)
             _cardsExecutable++;
         else if (cardBlockers.Count == 1)
@@ -67,6 +79,15 @@ public sealed class InterpretReport
     }
 
     public double LineFraction => _lines == 0 ? 0 : (double)_linesExecutable / _lines;
+
+    /// <summary>Whether the card's text turns it to another face: transforming, flipping, daybound, disturb.</summary>
+    public static bool NeedsBackFace(CardRules card) =>
+        card.Lines.SelectMany(x => x.Abilities).SelectMany(MTGRulesIR.Lowering.NodeWalker.Nodes).Any(node => node switch
+        {
+            Transform => true,
+            KeywordInstance keyword => CardDefinition.Normalize(keyword.Keyword) is "Daybound" or "Disturb" or "Flip",
+            _ => false,
+        });
 
     public string ToText(int top = 60)
     {
@@ -117,7 +138,7 @@ public static class InterpreterSupport
         typeof(PlayCard), typeof(CantBeRegenerated), typeof(CantBeTargeted), typeof(MustCombat), typeof(SetStats), typeof(Replacement),
         typeof(Otherwise), typeof(StillOfKind), typeof(Remains), typeof(RevealUntil), typeof(CantPlay), typeof(GetEnergy), typeof(CanAsThough), typeof(Convoke),
         typeof(CopySpell), typeof(DistributeCounters), typeof(MoveCounters), typeof(AssignsNoCombatDamage), typeof(ExchangeControl), typeof(Phasing), typeof(MustBlock), typeof(MustBeBlocked), typeof(DoubleCounters), typeof(DoubleStats), typeof(SwitchStats), typeof(ChangeTargets), typeof(CantBeActivated), typeof(CanBlock), typeof(CreateEmblem),
-        typeof(FlipCoin), typeof(RollDice), typeof(CastAsThoughFlash), typeof(MustBlock), typeof(MayNotUntap), typeof(Skip), typeof(TurnFace),
+        typeof(FlipCoin), typeof(RollDice), typeof(CastAsThoughFlash), typeof(MustBlock), typeof(MayNotUntap), typeof(Skip), typeof(TurnFace), typeof(Transform), typeof(SetDayNight),
         typeof(GainClassLevel), typeof(BecomeCopy), typeof(MayPlayFrom), typeof(ManaRestriction), typeof(ExtraLandPlays),
         typeof(AssignsDamageByToughness), typeof(MaximumHandSize), typeof(NoMaximumHandSize), typeof(GainAbilitiesOf), typeof(ProtectionDoesntRemoveThis), typeof(AssignsDamageAsThoughUnblocked), typeof(PlayWithHandRevealed),
     ];
@@ -137,7 +158,7 @@ public static class InterpreterSupport
     [
         typeof(And), typeof(Not), typeof(Controls), typeof(CountCondition), typeof(CompareCount), typeof(ThereAre), typeof(IsKind), typeof(ObjectIs), typeof(AbilityResolvedNthTime),
         typeof(HasKeywordsCondition), typeof(HasCountersCondition), typeof(IsInZone), typeof(ItsPhase), typeof(Did), typeof(OutcomeCondition), typeof(Happened),
-        typeof(WasCastWith), typeof(Targets), typeof(HandSize), typeof(WasAffectedThisWay), typeof(WasCast), typeof(ManaSpent), typeof(CompareControl), typeof(Or),
+        typeof(WasCastWith), typeof(Targets), typeof(HandSize), typeof(WasAffectedThisWay), typeof(WasCast), typeof(ManaSpent), typeof(CompareControl), typeof(Or), typeof(DayNight),
     ];
 
     static readonly HashSet<Type> _events =
@@ -169,7 +190,7 @@ public static class InterpreterSupport
 
     static readonly HashSet<string> _objectEvents =
     [
-        "EntersTheBattlefield", "EntersOrTransforms", "EntersUntapped", "Dies", "IsPutIntoAGraveyardFromTheBattlefield", "IsPutIntoAGraveyardFromAnywhere",
+        "EntersTheBattlefield", "EntersOrTransforms", "Transforms", "TransformsInto", "EntersUntapped", "Dies", "IsPutIntoAGraveyardFromTheBattlefield", "IsPutIntoAGraveyardFromAnywhere",
         "IsPutIntoAGraveyard", "LeavesTheBattlefield", "LeavesTheBattlefieldWithoutDying", "IsPutIntoExileFromTheBattlefield", "Attacks", "AttacksOrBlocks",
         "AttacksAlone", "AttacksYou", "AttacksAPlayer", "AttacksAndIsntBlocked", "BecomesMonstrous", "Blocks", "BlocksOrBecomesBlocked", "BlocksACreature", "BecomesBlocked", "BecomesTapped",
         "BecomesUntapped", "DealsCombatDamageToAPlayer", "DealsCombatDamageToAPlayerOrPlaneswalker", "DealsCombatDamageToAnOpponent", "DealsCombatDamageToYou",

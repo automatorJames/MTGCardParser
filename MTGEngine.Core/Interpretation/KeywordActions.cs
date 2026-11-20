@@ -3,7 +3,7 @@ namespace MTGEngine.Core;
 /// <summary>Keyword actions as effects: scry, surveil, investigate, bolster, proliferate, explore, adapt, monstrosity, populate.</summary>
 public static class KeywordActions
 {
-    public static readonly HashSet<string> Supported = ["Scry", "Surveil", "Investigate", "Bolster", "Proliferate", "Explore", "Adapt", "Monstrosity", "Populate", "Fateseal", "Connive", "Learn", "Clash", "Discover", "Manifest", "ManifestDread", "Cascade", "Detain", "Incubate", "Earthbend", "Behold"];
+    public static readonly HashSet<string> Supported = ["Scry", "Surveil", "Investigate", "Bolster", "Proliferate", "Explore", "Adapt", "Monstrosity", "Populate", "Fateseal", "Connive", "Learn", "Clash", "Discover", "Manifest", "ManifestDread", "Cascade", "Detain", "Incubate", "Earthbend", "Behold", "Flip"];
 
     /// <summary>What a player could behold: a permanent they control, or a card in their hand, that matches.</summary>
     public static ImmutableList<TargetRef> Beholdable(ObjectSelector beheld, EffectContext ctx) =>
@@ -26,6 +26,12 @@ public static class KeywordActions
             var amount = Quantities.Evaluate(keyword.Amount, ctx) ?? 1;
             switch (keyword.Keyword)
             {
+                // "Flip it": a flip card turns to its flipped half, once.
+                case "Flip":
+                    foreach (var id in action.Objects is null ? (ctx.Source is { } flipping ? [flipping] : []) : Resolver.ForEffect(action.Objects, ctx))
+                        game.Transform(id, toBack: true);
+                    break;
+
                 case "Scry":
                     Scry(game, ctx.Controller, amount, toGraveyard: false);
                     break;

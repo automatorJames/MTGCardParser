@@ -23,12 +23,15 @@ static class Lower
         var all = repository.GetDocumentsAsync().GetAwaiter().GetResult();
         var corpus = every > 1 ? all.Where((d, i) => i % every == 0).ToList() : all;
         var started = System.Diagnostics.Stopwatch.StartNew();
-        var documents = corpus.AsParallel().AsOrdered().Select(d => new ProcessedDocument(d, grammar)).ToList();
-        Console.WriteLine($"Tokenized {corpus.Count:N0} documents in {started.Elapsed.TotalSeconds:F1}s");
+        // A two-faced card's back face is tokenized and lowered as a document of its own, then carried under the front's rules.
+        var documents = corpus.AsParallel().AsOrdered()
+            .Select(d => (Front: new ProcessedDocument(d, grammar), Back: (d as Card)?.BackFace is { } back ? new ProcessedDocument(back, grammar) : null))
+            .ToList();
+        Console.WriteLine($"Tokenized {corpus.Count:N0} documents ({documents.Count(x => x.Back is not null):N0} with a back face) in {started.Elapsed.TotalSeconds:F1}s");
 
         started.Restart();
         var lowering = new CorpusLowering();
-        var cards = documents.AsParallel().AsOrdered().Select(lowering.Lower).ToList();
+        var cards = documents.AsParallel().AsOrdered().Select(d => d.Back is null ? lowering.Lower(d.Front) : lowering.Lower(d.Front) with { Back = lowering.Lower(d.Back) }).ToList();
         Console.WriteLine($"Lowered {cards.Count:N0} documents in {started.Elapsed.TotalSeconds:F1}s");
 
         Directory.CreateDirectory(outDir);

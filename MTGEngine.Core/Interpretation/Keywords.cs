@@ -21,6 +21,8 @@ public static class Keywords
         "Swampwalk", "Islandwalk", "Forestwalk", "Mountainwalk", "Plainswalk",
         // Cast face down, turned face up for their cost.
         "Morph", "Megamorph", "Disguise",
+        // Two-faced cards.
+        "Daybound", "Nightbound", "Disturb",
     ];
 
     /// <summary>

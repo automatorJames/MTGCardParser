@@ -19,7 +19,8 @@ public sealed record CardDefinition(
     ImmutableHashSet<Color> Colors,
     bool IsToken = false,
     string PrintedPower = null,
-    string PrintedToughness = null)
+    string PrintedToughness = null,
+    CardDefinition Back = null)
 {
     static readonly char[] _separators = [',', ' '];
 
@@ -36,7 +37,13 @@ public sealed record CardDefinition(
         // A card's keywords are its keyword lines'. The database's keyword list also names ability words, keyword
         // actions, and a double-faced card's back face (Delver of Secrets would fly), so it isn't read.
         var keywords = abilities.OfType<KeywordLine>().SelectMany(x => x.Keywords).SelectMany(KeywordAbilities.NamesOf).ToImmutableHashSet();
-        var colors = keywords.Contains("Devoid") ? ImmutableHashSet<Color>.Empty : cost.Colored.Keys.Concat(cost.Hybrid.SelectMany(x => x)).ToImmutableHashSet();
+        var colors = keywords.Contains("Devoid") ? ImmutableHashSet<Color>.Empty
+            : info.Colors is { } named ? named.Split(',').Select(MTGEngine.Core.Colors.OfSymbol).Where(x => x is not null).Select(x => x.Value).ToImmutableHashSet()
+            : cost.Colored.Keys.Concat(cost.Hybrid.SelectMany(x => x)).ToImmutableHashSet();
+        // A transforming card's back face has no mana cost of its own: its mana value is the front's.
+        var back = rules.Back is null ? null : From(rules.Back);
+        if (back is not null && rules.Back.Info?.ManaCost is null)
+            back = back with { ManaCost = cost };
 
         return new CardDefinition(
             rules.Name,
@@ -51,7 +58,8 @@ public sealed record CardDefinition(
             keywords,
             colors,
             PrintedPower: info.Power,
-            PrintedToughness: info.Toughness);
+            PrintedToughness: info.Toughness,
+            Back: back);
     }
 
     /// <summary>A token's definition from the lowering's description of it.</summary>

@@ -162,7 +162,10 @@ public sealed partial class Game
 
     public void PlayTurn(PlayerId player)
     {
+        var spellsLastTurn = State.Turn == 0 ? -1 : State.ThisTurnEventList.OfType<SpellCast>().Count(x => x.Item.Controller == State.ActivePlayer);
         Emit(new TurnBegan(State.Turn + 1, player));
+        if (spellsLastTurn >= 0)
+            DayNightAtTurnStart(spellsLastTurn);
         _attackersThisCombat = false;
 
         _turnSteps = [.. Enum.GetValues<Step>()];
@@ -574,6 +577,11 @@ public sealed partial class Game
                 && AdditionalPayable(flashback, player, obj.Id, 0) && AdditionalCostsOf(obj.Card).All(cost => AdditionalPayable(cost, player, obj.Id, 0))
                 && TargetsAvailable(SpellSlots(obj.Card), player, obj.Id))
                 actions.Add(new CastSpell(obj.Id, 0, Alternative: Flashback));
+            // Disturb: the back face, a creature or an aura, cast from the graveyard at sorcery speed.
+            if (obj.Zone == Zone.Graveyard && KeywordCost(obj.Card, "Disturb") is { } disturb && obj.Card.Back is { } disturbed && !Forbidden(player, obj)
+                && (disturbed.Keywords.Contains("Flash") || sorcerySpeed)
+                && AdditionalPayable(disturb, player, obj.Id, 0) && TargetsAvailable(SpellSlots(disturbed), player, obj.Id))
+                actions.Add(new CastSpell(obj.Id, 0, Alternative: DisturbCast));
             actions.AddRange(GraveyardCastActions(obj, player, sorcerySpeed));
         }
 
@@ -1404,6 +1412,51 @@ public sealed partial class Game
 
     // ---- Primitive actions ----------------------------------------------------------------------------------------
 
+    /// <summary>
+    /// Turns a two-faced object to its other face: a transforming card to its back face or back to its front, a flip card
+    /// to its flipped half. Nothing happens to a one-faced object, or to a transformed object asked for its back face.
+    /// </summary>
+    public bool Transform(ObjectId id, bool? toBack = null)
+    {
+        var obj = State.Object(id);
+        if (obj is null || obj.Zone is not (Zone.Battlefield or Zone.Stack) && toBack != true)
+            return false;
+        if (toBack == obj.Transformed || !obj.Transformed && obj.Card.Back is null)
+            return false;
+        Emit(new Transformed(id));
+        return true;
+    }
+
+    /// <summary>
+    /// It becomes day or night: each daybound permanent transforms as night falls, each nightbound one as day breaks.
+    /// </summary>
+    public void SetDayNight(string state)
+    {
+        if (State.DayNight == state)
+            return;
+        Emit(new DayNightChanged(state));
+        foreach (var obj in State.Battlefield.ToList())
+        {
+            var traits = Characteristics.Of(State, obj);
+            if (state == "Night" && traits.HasKeyword("Daybound"))
+                Transform(obj.Id, toBack: true);
+            else if (state == "Day" && traits.HasKeyword("Nightbound"))
+                Transform(obj.Id, toBack: false);
+        }
+    }
+
+    /// <summary>
+    /// As a turn begins once it's day or night: night falls if the last turn's active player cast no spells, day
+    /// breaks if they cast two or more.
+    /// </summary>
+    void DayNightAtTurnStart(int spellsCastLastTurn)
+    {
+        if (State.DayNight == "Day" && spellsCastLastTurn == 0)
+            SetDayNight("Night");
+        else if (State.DayNight == "Night" && spellsCastLastTurn >= 2)
+            SetDayNight("Day");
+    }
+
     public void MoveToZone(ObjectId id, Zone zone, PlayerId? controller = null, bool tapped = false, int position = -1, ObjectId? attachTo = null)
     {
         var obj = State.Object(id);
@@ -1434,6 +1487,14 @@ public sealed partial class Game
                 Emit(new CountersChanged(id, "loyalty", loyalty));
             if (obj.Card.IsSaga)
                 Emit(new CountersChanged(id, "lore", 1));
+            // A daybound permanent entering starts the day if it's neither day nor night; if it's night, it enters transformed.
+            if (obj.Card.Keywords.Contains("Daybound") && !State.Object(id).Transformed)
+            {
+                if (State.DayNight is null)
+                    SetDayNight("Day");
+                else if (State.DayNight == "Night")
+                    Transform(id, toBack: true);
+            }
             if (onEntry.Count > 0)
             {
                 var ctx = new EffectContext(this, to, id, new Dictionary<IrNode, ImmutableList<TargetRef>>(ReferenceEqualityComparer.Instance), Last: [TargetRef.Of(id)]);
