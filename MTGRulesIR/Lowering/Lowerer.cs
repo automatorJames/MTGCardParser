@@ -34,6 +34,7 @@ public sealed partial class Lowerer
         RegisterRoundThirteen();
         RegisterRoundFourteen();
         RegisterRoundFifteen();
+        RegisterRoundSixteen();
     }
 
     /// <summary>The glyph (and vocabulary) types that have a lowering rule.</summary>

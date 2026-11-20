@@ -255,7 +255,7 @@ public enum TimingKind { SorcerySpeed, InstantSpeed, OnceEachTurn, Once, During,
 
 /// <summary>Events of an object the lowering names beyond the grammar's permanent events: being cast, becoming a target.</summary>
 /// <summary>"PutThere" is a card arriving in the zone it is in now ("cards in your graveyard that were put there this turn").</summary>
-public enum ObjectEventKind { Cast, BecomesTarget, EntersOrTransforms, CountersPut, CountersRemoved, Discarded, PutThere, PutThereFromTheBattlefield, BecomesAttached, BecomesUnattached, AttackedOrBlocked, Blocked }
+public enum ObjectEventKind { Cast, BecomesTarget, EntersOrTransforms, Transforms, CountersPut, CountersRemoved, Discarded, PutThere, PutThereFromTheBattlefield, BecomesAttached, BecomesUnattached, AttackedOrBlocked, Blocked }
 
 /// <summary>Amounts an earlier effect produced that the grammar names only in text: excess damage.</summary>
 public enum ThisWayAmountKind { ExcessDamage }
